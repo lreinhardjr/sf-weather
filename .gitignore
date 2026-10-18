@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+veo/.venv/
+veo/__pycache__/
+veo/takes/
+veo/keyframes/

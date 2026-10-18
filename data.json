@@ -1,0 +1,535 @@
+{
+  "hot": 0,
+  "cold": 65,
+  "totalDays": 290,
+  "year": 2026,
+  "lastUpdated": "2026-10-17",
+  "hotDates": [],
+  "coldDates": [
+    "2026-06-16",
+    "2026-06-21",
+    "2026-06-22",
+    "2026-06-23",
+    "2026-06-24",
+    "2026-06-25",
+    "2026-06-26",
+    "2026-06-27",
+    "2026-06-30",
+    "2026-07-01",
+    "2026-07-02",
+    "2026-07-03",
+    "2026-07-04",
+    "2026-07-05",
+    "2026-07-06",
+    "2026-07-07",
+    "2026-07-08",
+    "2026-07-09",
+    "2026-07-10",
+    "2026-07-11",
+    "2026-07-12",
+    "2026-07-13",
+    "2026-07-14",
+    "2026-07-15",
+    "2026-07-16",
+    "2026-07-17",
+    "2026-07-18",
+    "2026-07-19",
+    "2026-07-20",
+    "2026-07-22",
+    "2026-07-23",
+    "2026-07-24",
+    "2026-07-25",
+    "2026-07-26",
+    "2026-07-27",
+    "2026-07-28",
+    "2026-07-29",
+    "2026-07-30",
+    "2026-07-31",
+    "2026-08-01",
+    "2026-08-05",
+    "2026-08-06",
+    "2026-08-07",
+    "2026-08-08",
+    "2026-08-09",
+    "2026-08-10",
+    "2026-08-11",
+    "2026-08-12",
+    "2026-08-13",
+    "2026-08-14",
+    "2026-08-15",
+    "2026-08-16",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-28",
+    "2026-08-29",
+    "2026-08-30",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-16"
+  ],
+  "winDates": [
+    {
+      "date": "2026-06-16",
+      "type": "cold",
+      "sfHigh": 63.1,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 67.7
+    },
+    {
+      "date": "2026-06-21",
+      "type": "cold",
+      "sfHigh": 62.3,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 66.1
+    },
+    {
+      "date": "2026-06-22",
+      "type": "cold",
+      "sfHigh": 59.4,
+      "runnerUp": "Great Falls",
+      "runnerUpHigh": 62.6
+    },
+    {
+      "date": "2026-06-23",
+      "type": "cold",
+      "sfHigh": 60.7,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 65.5
+    },
+    {
+      "date": "2026-06-24",
+      "type": "cold",
+      "sfHigh": 61.3,
+      "runnerUp": "Duluth",
+      "runnerUpHigh": 63.8
+    },
+    {
+      "date": "2026-06-25",
+      "type": "cold",
+      "sfHigh": 62.3,
+      "runnerUp": "Duluth",
+      "runnerUpHigh": 68.8
+    },
+    {
+      "date": "2026-06-26",
+      "type": "cold",
+      "sfHigh": 62.3,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 63
+    },
+    {
+      "date": "2026-06-27",
+      "type": "cold",
+      "sfHigh": 62.7,
+      "runnerUp": "Portland",
+      "runnerUpHigh": 65.3
+    },
+    {
+      "date": "2026-06-30",
+      "type": "cold",
+      "sfHigh": 62.7,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 63.4
+    },
+    {
+      "date": "2026-07-01",
+      "type": "cold",
+      "sfHigh": 64,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 66.6
+    },
+    {
+      "date": "2026-07-02",
+      "type": "cold",
+      "sfHigh": 63.9,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 67.9
+    },
+    {
+      "date": "2026-07-03",
+      "type": "cold",
+      "sfHigh": 64.7,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 71.1
+    },
+    {
+      "date": "2026-07-04",
+      "type": "cold",
+      "sfHigh": 62.6,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 70
+    },
+    {
+      "date": "2026-07-05",
+      "type": "cold",
+      "sfHigh": 63,
+      "runnerUp": "Duluth",
+      "runnerUpHigh": 72
+    },
+    {
+      "date": "2026-07-06",
+      "type": "cold",
+      "sfHigh": 62.1,
+      "runnerUp": "Great Falls",
+      "runnerUpHigh": 70.2
+    },
+    {
+      "date": "2026-07-07",
+      "type": "cold",
+      "sfHigh": 58.4,
+      "runnerUp": "Boston",
+      "runnerUpHigh": 67.7
+    },
+    {
+      "date": "2026-07-08",
+      "type": "cold",
+      "sfHigh": 60.3,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 71.6
+    },
+    {
+      "date": "2026-07-09",
+      "type": "cold",
+      "sfHigh": 61.6,
+      "runnerUp": "San Diego",
+      "runnerUpHigh": 72.7
+    },
+    {
+      "date": "2026-07-10",
+      "type": "cold",
+      "sfHigh": 59.5,
+      "runnerUp": "San Diego",
+      "runnerUpHigh": 72.8
+    },
+    {
+      "date": "2026-07-11",
+      "type": "cold",
+      "sfHigh": 60.9,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 71.5
+    },
+    {
+      "date": "2026-07-12",
+      "type": "cold",
+      "sfHigh": 66.4,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 70.2
+    },
+    {
+      "date": "2026-07-13",
+      "type": "cold",
+      "sfHigh": 71.3,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 76.2
+    },
+    {
+      "date": "2026-07-14",
+      "type": "cold",
+      "sfHigh": 76.4,
+      "runnerUp": "Austin",
+      "runnerUpHigh": 78
+    },
+    {
+      "date": "2026-07-15",
+      "type": "cold",
+      "sfHigh": 68.6,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 75.4
+    },
+    {
+      "date": "2026-07-16",
+      "type": "cold",
+      "sfHigh": 65.9,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 67.1
+    },
+    {
+      "date": "2026-07-17",
+      "type": "cold",
+      "sfHigh": 60.4,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 70.3
+    },
+    {
+      "date": "2026-07-18",
+      "type": "cold",
+      "sfHigh": 61.6,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 73
+    },
+    {
+      "date": "2026-07-19",
+      "type": "cold",
+      "sfHigh": 60.9,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 66.1
+    },
+    {
+      "date": "2026-07-20",
+      "type": "cold",
+      "sfHigh": 66.3,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 71.7
+    },
+    {
+      "date": "2026-07-22",
+      "type": "cold",
+      "sfHigh": 68.5,
+      "runnerUp": "Buffalo",
+      "runnerUpHigh": 69.4
+    },
+    {
+      "date": "2026-07-23",
+      "type": "cold",
+      "sfHigh": 64.2,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 67.1
+    },
+    {
+      "date": "2026-07-24",
+      "type": "cold",
+      "sfHigh": 64.8,
+      "runnerUp": "Charlotte",
+      "runnerUpHigh": 75.2
+    },
+    {
+      "date": "2026-07-25",
+      "type": "cold",
+      "sfHigh": 66.9,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 71.1
+    },
+    {
+      "date": "2026-07-26",
+      "type": "cold",
+      "sfHigh": 63.8,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 72
+    },
+    {
+      "date": "2026-07-27",
+      "type": "cold",
+      "sfHigh": 64.9,
+      "runnerUp": "Duluth",
+      "runnerUpHigh": 77.6
+    },
+    {
+      "date": "2026-07-28",
+      "type": "cold",
+      "sfHigh": 70.1,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 73.7
+    },
+    {
+      "date": "2026-07-29",
+      "type": "cold",
+      "sfHigh": 67.9,
+      "runnerUp": "Boston",
+      "runnerUpHigh": 70.4
+    },
+    {
+      "date": "2026-07-30",
+      "type": "cold",
+      "sfHigh": 64.9,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 67
+    },
+    {
+      "date": "2026-07-31",
+      "type": "cold",
+      "sfHigh": 68.9,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 71.4
+    },
+    {
+      "date": "2026-08-01",
+      "type": "cold",
+      "sfHigh": 70.7,
+      "runnerUp": "Chicago",
+      "runnerUpHigh": 71.8
+    },
+    {
+      "date": "2026-08-05",
+      "type": "cold",
+      "sfHigh": 65.8,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 73.9
+    },
+    {
+      "date": "2026-08-06",
+      "type": "cold",
+      "sfHigh": 64.9,
+      "runnerUp": "St. Louis",
+      "runnerUpHigh": 76.5
+    },
+    {
+      "date": "2026-08-07",
+      "type": "cold",
+      "sfHigh": 62.1,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 71
+    },
+    {
+      "date": "2026-08-08",
+      "type": "cold",
+      "sfHigh": 61.7,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 72.3
+    },
+    {
+      "date": "2026-08-09",
+      "type": "cold",
+      "sfHigh": 65.9,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 72.6
+    },
+    {
+      "date": "2026-08-10",
+      "type": "cold",
+      "sfHigh": 66.2,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 73.8
+    },
+    {
+      "date": "2026-08-11",
+      "type": "cold",
+      "sfHigh": 65.4,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 73
+    },
+    {
+      "date": "2026-08-12",
+      "type": "cold",
+      "sfHigh": 66.3,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 74.4
+    },
+    {
+      "date": "2026-08-13",
+      "type": "cold",
+      "sfHigh": 65.5,
+      "runnerUp": "Great Falls",
+      "runnerUpHigh": 67.4
+    },
+    {
+      "date": "2026-08-14",
+      "type": "cold",
+      "sfHigh": 65.3,
+      "runnerUp": "Great Falls",
+      "runnerUpHigh": 67.6
+    },
+    {
+      "date": "2026-08-15",
+      "type": "cold",
+      "sfHigh": 64,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 69.8
+    },
+    {
+      "date": "2026-08-16",
+      "type": "cold",
+      "sfHigh": 64.8,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 71.1
+    },
+    {
+      "date": "2026-08-17",
+      "type": "cold",
+      "sfHigh": 66,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 72.7
+    },
+    {
+      "date": "2026-08-18",
+      "type": "cold",
+      "sfHigh": 63.7,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 69
+    },
+    {
+      "date": "2026-08-19",
+      "type": "cold",
+      "sfHigh": 64.2,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 71.5
+    },
+    {
+      "date": "2026-08-20",
+      "type": "cold",
+      "sfHigh": 63.5,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 69.9
+    },
+    {
+      "date": "2026-08-21",
+      "type": "cold",
+      "sfHigh": 65.2,
+      "runnerUp": "Boston",
+      "runnerUpHigh": 69.3
+    },
+    {
+      "date": "2026-08-24",
+      "type": "cold",
+      "sfHigh": 65.9,
+      "runnerUp": "Buffalo",
+      "runnerUpHigh": 67.1
+    },
+    {
+      "date": "2026-08-25",
+      "type": "cold",
+      "sfHigh": 67.1,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 72.5
+    },
+    {
+      "date": "2026-08-28",
+      "type": "cold",
+      "sfHigh": 64.3,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 71.1
+    },
+    {
+      "date": "2026-08-29",
+      "type": "cold",
+      "sfHigh": 63.8,
+      "runnerUp": "Seattle",
+      "runnerUpHigh": 69
+    },
+    {
+      "date": "2026-08-30",
+      "type": "cold",
+      "sfHigh": 65,
+      "runnerUp": "Great Falls",
+      "runnerUpHigh": 68.5
+    },
+    {
+      "date": "2026-08-31",
+      "type": "cold",
+      "sfHigh": 62.6,
+      "runnerUp": "Caribou",
+      "runnerUpHigh": 70.3
+    },
+    {
+      "date": "2026-09-01",
+      "type": "cold",
+      "sfHigh": 68.1,
+      "runnerUp": "Boston",
+      "runnerUpHigh": 69.3
+    },
+    {
+      "date": "2026-09-16",
+      "type": "cold",
+      "sfHigh": 63.1,
+      "runnerUp": "International Falls",
+      "runnerUpHigh": 64.2
+    }
+  ],
+  "lastProcessedDate": "2026-10-17",
+  "definition": "Both counts use the daily HIGH: hottest = highest daily high, coldest = lowest daily high, across the cities in data/cities.js.",
+  "source": "Open-Meteo (open-meteo.com)"
+}

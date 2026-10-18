@@ -1,0 +1,293 @@
+/* ==========================================================================
+   San Francisco: Hottest & Coldest — styles
+   ========================================================================== */
+
+:root {
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Placeholder scene colours, used only until posters/videos paint. */
+  --warm-sky: #a9c9e6;
+  --cold-sky: #8d969d;
+
+  /* Specular highlight position on the glass panel; updated by script.js on mousemove. */
+  --spec-x: 50%;
+  --spec-y: 40%;
+  --spec-opacity: 0;
+
+  /* Scroll container height. 300vh = the transition gets ~2 screens of scrolling. */
+  --stage-height: 300vh;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--cold-sky);
+  color: #0b1118;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scroll would fight it. */
+
+/* --------------------------------------------------------------------------
+   Scroll stage + pinned scene
+   -------------------------------------------------------------------------- */
+
+.scroll-stage {
+  position: relative;
+  height: var(--stage-height);
+}
+
+.scene {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100svh;      /* mobile browsers: ignore the collapsing address bar */
+  overflow: hidden;
+  background: var(--warm-sky);
+}
+
+/* Fallback for the rare browser without sticky support. */
+@supports not (position: sticky) {
+  .scene { position: fixed; inset: 0; }
+}
+
+.poster,
+.clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;        /* cover-crop; the 16:9 clips centre at any aspect ratio */
+  object-position: center;
+  pointer-events: none;
+}
+
+/* Posters sit under the videos. Warm on top of cold so the page starts sunny. */
+.poster { z-index: 1; opacity: 0; }
+.poster--cold { z-index: 1; }
+.poster--warm { z-index: 2; }
+.poster.is-visible { opacity: 1; }
+
+/* Videos. Visibility is switched by script.js on a single frame — no crossfade,
+   because the clips share framing and their boundary frames match. */
+.clip {
+  z-index: 3;
+  opacity: 0;
+  background: transparent;
+}
+.clip.is-visible { opacity: 1; }
+.clip.is-dead { display: none; }   /* a clip that failed to load; its poster shows instead */
+
+/* --------------------------------------------------------------------------
+   Glass panel
+   -------------------------------------------------------------------------- */
+
+.panel-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.glass {
+  position: relative;
+  pointer-events: auto;
+  width: min(560px, 100%);
+  padding: clamp(28px, 4vw, 44px) clamp(28px, 5vw, 52px);
+  border-radius: 32px;
+  text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+
+  /* Liquid glass */
+  background: rgba(255, 255, 255, 0.4);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 30px 80px rgba(10, 20, 30, 0.22),
+    0 2px 6px rgba(10, 20, 30, 0.08);
+
+  transition: transform 0.9s var(--ease), box-shadow 0.9s var(--ease);
+}
+
+/* 1px inner top highlight */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.15) 35%, rgba(255,255,255,0) 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Cursor-following specular highlight (opacity driven by script.js, zero on touch devices). */
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+    circle at var(--spec-x) var(--spec-y),
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.18) 18%,
+    rgba(255, 255, 255, 0) 42%
+  );
+  opacity: var(--spec-opacity);
+  transition: opacity 0.6s var(--ease);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Subtle contrast floor so type reads over both bright sand and dark fog. */
+.glass > * {
+  position: relative;
+  z-index: 3;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.35), 0 0 18px rgba(12, 22, 32, 0.08);
+}
+
+.eyebrow {
+  margin: 0 0 clamp(18px, 3vw, 28px);
+  font-size: clamp(11px, 1.2vw, 13px);
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(11, 17, 24, 0.72);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: clamp(12px, 3vw, 28px);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.metric__divider {
+  width: 0.5px;
+  align-self: stretch;
+  background: linear-gradient(180deg, rgba(11,17,24,0) 0%, rgba(11,17,24,0.25) 50%, rgba(11,17,24,0) 100%);
+}
+
+.metric__label {
+  margin: 0 0 6px;
+  font-size: clamp(10px, 1.1vw, 12px);
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(11, 17, 24, 0.62);
+  white-space: nowrap;
+}
+
+.metric__value {
+  margin: 0;
+  font-size: clamp(64px, 11vw, 112px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: #0b1118;
+}
+
+.metric__unit {
+  margin: 8px 0 0;
+  font-size: clamp(13px, 1.4vw, 16px);
+  font-weight: 500;
+  text-transform: lowercase;
+  color: rgba(11, 17, 24, 0.62);
+}
+
+.footer {
+  margin: clamp(20px, 3vw, 30px) 0 0;
+  font-size: clamp(13px, 1.3vw, 15px);
+  font-weight: 500;
+  color: rgba(11, 17, 24, 0.72);
+}
+
+/* --------------------------------------------------------------------------
+   Scroll cue
+   -------------------------------------------------------------------------- */
+
+.scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+  opacity: 1;
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+  pointer-events: none;
+}
+.scroll-cue.is-hidden { opacity: 0; transform: translate(-50%, 8px); }
+
+.scroll-cue__arrow {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0));
+  animation: cue-drift 2.2s var(--ease) infinite;
+}
+@keyframes cue-drift {
+  0%   { transform: scaleY(0.4); transform-origin: top; opacity: 0; }
+  40%  { transform: scaleY(1);   opacity: 1; }
+  100% { transform: scaleY(1) translateY(10px); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 520px) {
+  .panel-wrap { padding: 16px; }
+  .glass { border-radius: 26px; padding: 26px 20px; }
+  .metrics { gap: 10px; }
+  .metric__label { letter-spacing: 1.6px; font-size: 10px; }
+  .metric__value { font-size: clamp(56px, 20vw, 84px); }
+  .eyebrow { letter-spacing: 3px; }
+}
+
+@media (max-height: 460px) and (orientation: landscape) {
+  .glass { padding: 18px 28px; }
+  .metric__value { font-size: 56px; }
+  .eyebrow { margin-bottom: 10px; }
+  .footer { margin-top: 12px; }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue__arrow { animation: none; }
+  .glass, .glass::after, .scroll-cue { transition: none; }
+}

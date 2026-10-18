@@ -1,0 +1,15 @@
+{
+  "name": "sf-weather",
+  "version": "1.0.0",
+  "private": true,
+  "description": "How often is San Francisco the hottest or coldest city in America? Scroll-driven site + Open-Meteo daily tally.",
+  "scripts": {
+    "start": "node serve.js",
+    "backfill": "node data/backfill.js",
+    "update": "node data/update.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

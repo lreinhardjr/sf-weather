@@ -1,0 +1,47 @@
+# Daily tally update.
+# Runs data/update.js once a day, and commits data.json back to the repo if it changed,
+# which redeploys the static site (GitHub Pages / Netlify / Vercel all rebuild on push).
+#
+# Before enabling this, run the backfill once locally and commit the resulting data.json
+# (see README.md → "Data pipeline"). You can also trigger this workflow by hand from the
+# Actions tab ("Run workflow").
+
+name: Update hottest/coldest tally
+
+on:
+  schedule:
+    # 14:30 UTC = 06:30 / 07:30 Pacific, after Open-Meteo has yesterday's data.
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-tally
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Tally the latest completed day(s)
+        run: npm run update
+
+      - name: Commit data.json if it changed
+        run: |
+          if git diff --quiet -- data.json; then
+            echo "data.json unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "Update tally for $(date -u +%Y-%m-%d)"
+          git push

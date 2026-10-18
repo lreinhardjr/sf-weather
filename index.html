@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>San Francisco: Hottest &amp; Coldest</title>
+  <meta name="description" content="How often is San Francisco the hottest or the coldest city in the continental United States? A scroll-driven tally, updated daily.">
+  <meta name="theme-color" content="#9fb8c9">
+  <link rel="preload" as="image" href="assets/warm-poster.jpg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!--
+    The tall scroll container gives the weather transition room to breathe.
+    The .scene inside it is sticky, so the Baker Beach view stays pinned to the
+    viewport while the page scrolls; only the weather changes.
+  -->
+  <main class="scroll-stage" id="stage">
+    <section class="scene" id="scene" aria-label="Baker Beach and the Golden Gate Bridge, turning from sunny to foggy as you scroll">
+
+      <!-- Static posters: shown if a video fails to load, and under the videos while they buffer. -->
+      <img class="poster poster--warm" id="posterWarm" src="assets/warm-poster.jpg" alt="" decoding="async">
+      <img class="poster poster--cold" id="posterCold" src="assets/cold-poster.jpg" alt="" decoding="async">
+
+      <!-- Phase 1 (progress 0 to WARM_END): sunny loop, playing. -->
+      <video class="clip clip--warm is-visible" id="clipWarm"
+             src="assets/warm-loop.mp4" poster="assets/warm-poster.jpg"
+             preload="auto" muted loop playsinline autoplay disablepictureinpicture></video>
+
+      <!-- Phase 2 (WARM_END to COLD_START): fog rolls in; currentTime is driven by scroll, never plays on its own. -->
+      <video class="clip clip--transition" id="clipTransition"
+             src="assets/transition.mp4" poster="assets/warm-poster.jpg"
+             preload="auto" muted playsinline disablepictureinpicture></video>
+
+      <!-- Phase 3 (COLD_START to 1): foggy loop, playing. -->
+      <video class="clip clip--cold" id="clipCold"
+             src="assets/cold-loop.mp4" poster="assets/cold-poster.jpg"
+             preload="auto" muted loop playsinline disablepictureinpicture></video>
+
+      <!-- Fixed "liquid glass" metrics panel. Neutral; never tinted by scroll position. -->
+      <div class="panel-wrap">
+        <article class="glass" id="glass" aria-live="polite">
+          <p class="eyebrow" id="eyebrow">San Francisco &middot; <span id="year">2026</span></p>
+
+          <div class="metrics">
+            <div class="metric">
+              <p class="metric__label">Hottest in USA</p>
+              <p class="metric__value" id="hotValue" data-target="0">0</p>
+              <p class="metric__unit">days</p>
+            </div>
+            <div class="metric__divider" aria-hidden="true"></div>
+            <div class="metric">
+              <p class="metric__label">Coldest in USA</p>
+              <p class="metric__value" id="coldValue" data-target="0">0</p>
+              <p class="metric__unit">days</p>
+            </div>
+          </div>
+
+          <p class="footer">Out of <span id="totalDays">0</span> days so far this year.</p>
+        </article>
+      </div>
+
+      <!-- Small scroll cue; fades out once the visitor starts scrolling. -->
+      <div class="scroll-cue" id="scrollCue" aria-hidden="true">
+        <span>Scroll</span>
+        <span class="scroll-cue__arrow"></span>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
