@@ -345,6 +345,7 @@
     if (want === cardVisible) return;
     cardVisible = want;
     glass.classList.toggle('is-hidden', !want);
+    if (!want) closeInfo(false);
     if (want && dataLoaded) animateActiveMetric(1200);
   }
 
@@ -401,6 +402,51 @@
       .then((d) => renderPanel(Object.assign({}, DEFAULT_DATA, d)))
       .catch(() => renderPanel(DEFAULT_DATA));
   }
+
+  /* ------------------------------------------------------------------------
+     "How this is counted" popover
+     ------------------------------------------------------------------------ */
+
+  const infoBtn   = document.getElementById('infoBtn');
+  const infoPop   = document.getElementById('infoPop');
+  const infoClose = document.getElementById('infoClose');
+  let infoOpen = false;
+
+  function placePop() {
+    const r = glass.getBoundingClientRect();
+    const s = glass.offsetParent ? glass.offsetParent.getBoundingClientRect() : { top: 0 };
+    infoPop.style.top = Math.round(r.bottom - s.top + 8) + 'px';
+  }
+
+  function openInfo() {
+    if (infoOpen) return;
+    infoOpen = true;
+    placePop();
+    infoPop.hidden = false;
+    infoPop.classList.add('is-opening');
+    infoPop.classList.remove('is-closing');
+    requestAnimationFrame(() => requestAnimationFrame(() => infoPop.classList.remove('is-opening')));
+    infoBtn.setAttribute('aria-expanded', 'true');
+    infoClose.focus({ preventScroll: true });
+  }
+
+  function closeInfo(returnFocus) {
+    if (!infoOpen) return;
+    infoOpen = false;
+    infoBtn.setAttribute('aria-expanded', 'false');
+    infoPop.classList.add('is-closing');
+    const hide = () => { if (!infoOpen) { infoPop.hidden = true; infoPop.classList.remove('is-closing'); } };
+    if (reducedMotion) hide(); else setTimeout(hide, 420);
+    if (returnFocus) infoBtn.focus({ preventScroll: true });
+  }
+
+  infoBtn.addEventListener('click', (e) => { e.stopPropagation(); infoOpen ? closeInfo(true) : openInfo(); });
+  infoClose.addEventListener('click', () => closeInfo(true));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && infoOpen) closeInfo(true); });
+  document.addEventListener('pointerdown', (e) => {
+    if (infoOpen && !infoPop.contains(e.target) && !infoBtn.contains(e.target)) closeInfo(false);
+  });
+  window.addEventListener('resize', () => { if (infoOpen) placePop(); });
 
   if (!touchOnly) {
     glass.addEventListener('mousemove', (e) => {

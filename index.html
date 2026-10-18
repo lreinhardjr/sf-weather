@@ -65,6 +65,7 @@
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 15a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 8.5a3.5 3.5 0 0 1-.5 6.5"/><path d="M4 19h12M8 22h9"/></svg>
               </span>
               <span class="metric__label">Coldest city<br>in the US</span>
+              <button class="metric__info" id="infoBtn" type="button" aria-label="How is this counted?" aria-expanded="false" aria-controls="infoPop" title="How is this counted?">i</button>
             </div>
             <p class="metric__row"><span class="metric__value" id="coldValue">0</span><span class="metric__unit">days</span></p>
             <div class="metric__bar" aria-hidden="true"><span class="metric__bar-fill" id="coldBar"></span></div>
@@ -73,6 +74,18 @@
 
         <p class="footer">of <span id="totalDays">0</span> days so far this year</p>
       </aside>
+
+      <!-- Plain-language note on how the tally is counted; opened from the "i" button on the card. -->
+      <div class="pop" id="infoPop" role="dialog" aria-modal="false" aria-labelledby="infoTitle" hidden>
+        <div class="pop__head">
+          <h2 class="pop__title" id="infoTitle">How this is counted</h2>
+          <button class="pop__close" id="infoClose" type="button" aria-label="Close">&times;</button>
+        </div>
+        <p>San Francisco counts as the <strong>coldest city</strong> on a day when it had the lowest overnight low of about 40 major cities across the lower 48 states, and as the <strong>hottest</strong> when it had the highest afternoon high.</p>
+        <p>The city's famous cool summer afternoons are not what this measures. Counted by the lowest afternoon high instead, San Francisco would rank coldest several times as often.</p>
+        <p>The temperatures are modeled weather estimates for downtown San Francisco rather than the official airport thermometer, and several of this year's wins were decided by less than one degree, so treat the count as a close estimate, not an exact record.</p>
+        <p class="pop__fine">Updated daily. Alaska and Hawaii are not included. A tie counts for San Francisco.</p>
+      </div>
 
       <!-- Scroll nudges: one at the top (fog in), one at the bottom (back to the sun). -->
       <div class="scroll-cue scroll-cue--down" id="scrollCue" aria-hidden="true">
