@@ -7,10 +7,12 @@
  * We take archive data for anything older than ARCHIVE_LAG_DAYS and forecast "past_days"
  * data for the most recent days, so a backfill through yesterday is always possible.
  *
- * DEFINITION (keep consistent): both comparisons use the DAILY HIGH (temperature_2m_max).
- *   hottest city = highest daily high; coldest city = LOWEST daily high.
- * That gives an apples-to-apples "warmest / coolest daytime" measure. Using the daily
- * minimum for "coldest" would be the obvious alternative, but we keep one definition.
+ * DEFINITION:
+ *   hottest city = the highest DAILY HIGH  (temperature_2m_max) of the day
+ *   coldest city = the lowest  DAILY LOW   (temperature_2m_min) of the day
+ * i.e. the everyday meaning of "hottest" and "coldest". (An earlier version used the
+ * lowest daily high for "coldest", which counts SF's cool foggy afternoons; that made
+ * SF "coldest" on ~65 days a year. By overnight low it is ~15.)
  */
 const { CITIES, SAN_FRANCISCO } = require('./cities');
 
@@ -68,24 +70,27 @@ function coordParams() {
 }
 
 /**
- * Fetch each city's daily high (°F) for every date in [start, end].
- * Returns { [date]: { [cityName]: highF | null } }.
+ * Fetch each city's daily high and low (°F) for every date in [start, end].
+ * Returns { [date]: { [cityName]: { high, low } } } (high/low may be null).
  */
-async function fetchDailyHighs(start, end) {
+async function fetchDailyTemps(start, end) {
   const result = {};
   for (const d of listDates(start, end)) result[d] = {};
 
   const today = todayInSF();
   const archiveEnd = addDays(today, -ARCHIVE_LAG_DAYS);
-  const common = `${coordParams()}&daily=temperature_2m_max&temperature_unit=fahrenheit&timezone=auto`;
+  const common = `${coordParams()}&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto`;
 
   const merge = (locations) => {
     locations.forEach((loc, i) => {
       const city = CITIES[i].name;
       const times = (loc.daily && loc.daily.time) || [];
       const maxes = (loc.daily && loc.daily.temperature_2m_max) || [];
+      const mins  = (loc.daily && loc.daily.temperature_2m_min) || [];
       times.forEach((t, j) => {
-        if (result[t] && result[t][city] == null) result[t][city] = maxes[j] == null ? null : maxes[j];
+        if (result[t] && result[t][city] == null) {
+          result[t][city] = { high: maxes[j] == null ? null : maxes[j], low: mins[j] == null ? null : mins[j] };
+        }
       });
     });
   };
@@ -108,38 +113,40 @@ async function fetchDailyHighs(start, end) {
 /* ---------------------------------------------------------------- the per-day rule */
 
 /**
- * Given { cityName: highF | null } for one date, decide the hottest and coldest cities.
+ * Given { cityName: { high, low } } for one date, decide the hottest and coldest cities.
  * Returns null if San Francisco has no reading that day (the day is skipped, not counted).
  */
-function tallyDay(date, highs) {
-  const sf = highs[SAN_FRANCISCO.name];
-  if (sf == null || !Number.isFinite(sf)) return null;
+function tallyDay(date, temps) {
+  const sf = temps[SAN_FRANCISCO.name];
+  const ok = (v) => v != null && Number.isFinite(v);
+  if (!sf || !ok(sf.high) || !ok(sf.low)) return null;
 
   const others = CITIES
     .filter((c) => c.name !== SAN_FRANCISCO.name)
-    .map((c) => ({ city: c.name, high: highs[c.name] }))
-    .filter((r) => r.high != null && Number.isFinite(r.high));
-  if (others.length < CITIES.length / 2) return null;   // too much missing data to judge the day
+    .map((c) => ({ city: c.name, high: temps[c.name] && temps[c.name].high, low: temps[c.name] && temps[c.name].low }));
+  const withHigh = others.filter((r) => ok(r.high));
+  const withLow  = others.filter((r) => ok(r.low));
+  if (withHigh.length < CITIES.length / 2 || withLow.length < CITIES.length / 2) return null;  // too much missing data
 
-  const byHigh = [...others].sort((a, b) => b.high - a.high);   // hottest first
-  const hottestOther = byHigh[0];
-  const coldestOther = byHigh[byHigh.length - 1];
+  const hottestOther = withHigh.reduce((a, b) => (b.high > a.high ? b : a));   // highest daily high
+  const coldestOther = withLow.reduce((a, b) => (b.low < a.low ? b : a));      // lowest daily low
 
   // SF "wins" if no other city beats it. Ties therefore count as a win (nobody was hotter/colder).
-  const sfHot  = sf >= hottestOther.high;
-  const sfCold = sf <= coldestOther.high;
+  const sfHot  = sf.high >= hottestOther.high;
+  const sfCold = sf.low  <= coldestOther.low;
 
   return {
     date,
-    sfHigh: sf,
+    sfHigh: sf.high,
+    sfLow: sf.low,
     hottest: sfHot ? SAN_FRANCISCO.name : hottestOther.city,
-    hottestHigh: sfHot ? sf : hottestOther.high,
+    hottestHigh: sfHot ? sf.high : hottestOther.high,
     coldest: sfCold ? SAN_FRANCISCO.name : coldestOther.city,
-    coldestHigh: sfCold ? sf : coldestOther.high,
+    coldestLow: sfCold ? sf.low : coldestOther.low,
     sfHot,
     sfCold,
-    runnerUpHot:  hottestOther,   // the city SF beat (or that beat SF) for hottest
-    runnerUpCold: coldestOther,   // likewise for coldest
+    runnerUpHot:  { city: hottestOther.city, temp: hottestOther.high },  // the city SF beat (or that beat SF) for hottest
+    runnerUpCold: { city: coldestOther.city, temp: coldestOther.low },   // likewise for coldest
   };
 }
 
@@ -154,9 +161,9 @@ function emptyData(year) {
     lastUpdated: null,
     hotDates: [],
     coldDates: [],
-    winDates: [],          // { date, type: 'hot' | 'cold', sfHigh, runnerUp, runnerUpHigh }
+    winDates: [],          // { date, type: 'hot' | 'cold', sfTemp, runnerUp, runnerUpTemp }
     lastProcessedDate: null,
-    definition: 'Both counts use the daily HIGH: hottest = highest daily high, coldest = lowest daily high, across the cities in data/cities.js.',
+    definition: 'hottest = highest daily high, coldest = lowest daily low (overnight), across the cities in data/cities.js.',
     source: 'Open-Meteo (open-meteo.com)',
   };
 }
@@ -173,14 +180,14 @@ function applyDay(data, date, result) {
     if (result.sfHot) {
       data.hot += 1;
       data.hotDates.push(date);
-      data.winDates.push({ date, type: 'hot', sfHigh: result.sfHigh,
-        runnerUp: result.runnerUpHot.city, runnerUpHigh: result.runnerUpHot.high });
+      data.winDates.push({ date, type: 'hot', sfTemp: result.sfHigh,
+        runnerUp: result.runnerUpHot.city, runnerUpTemp: result.runnerUpHot.temp });
     }
     if (result.sfCold) {
       data.cold += 1;
       data.coldDates.push(date);
-      data.winDates.push({ date, type: 'cold', sfHigh: result.sfHigh,
-        runnerUp: result.runnerUpCold.city, runnerUpHigh: result.runnerUpCold.high });
+      data.winDates.push({ date, type: 'cold', sfTemp: result.sfLow,
+        runnerUp: result.runnerUpCold.city, runnerUpTemp: result.runnerUpCold.temp });
     }
   }
 
@@ -193,13 +200,14 @@ function applyDay(data, date, result) {
 /** Run the rule for every date in [start, end] and fold the results into data. */
 async function processRange(data, start, end, log = console.log) {
   if (start > end) { log(`Nothing to do: ${start} is after ${end}.`); return data; }
-  log(`Fetching daily highs for ${CITIES.length} cities, ${start} → ${end} …`);
-  const highs = await fetchDailyHighs(start, end);
+  log(`Fetching daily highs and lows for ${CITIES.length} cities, ${start} → ${end} …`);
+  const temps = await fetchDailyTemps(start, end);
   let skipped = 0;
   for (const date of listDates(start, end)) {
-    const r = tallyDay(date, highs[date] || {});
+    const r = tallyDay(date, temps[date] || {});
     if (!r) skipped += 1;
-    else if (r.sfHot || r.sfCold) log(`  ${date}: SF ${r.sfHot ? 'HOTTEST' : 'COLDEST'} (SF high ${r.sfHigh}°F; next ${r.sfHot ? r.runnerUpHot.city + ' ' + r.runnerUpHot.high : r.runnerUpCold.city + ' ' + r.runnerUpCold.high}°F)`);
+    else if (r.sfHot) log(`  ${date}: SF HOTTEST (SF high ${r.sfHigh}°F; next ${r.runnerUpHot.city} ${r.runnerUpHot.temp}°F)`);
+    else if (r.sfCold) log(`  ${date}: SF COLDEST (SF low ${r.sfLow}°F; next ${r.runnerUpCold.city} ${r.runnerUpCold.temp}°F)`);
     applyDay(data, date, r);
   }
   if (skipped) log(`  (${skipped} day(s) had no usable reading and were not judged)`);
@@ -208,5 +216,5 @@ async function processRange(data, start, end, log = console.log) {
 
 module.exports = {
   todayInSF, addDays, daysBetween, dayOfYear, listDates,
-  fetchDailyHighs, tallyDay, emptyData, applyDay, processRange,
+  fetchDailyTemps, tallyDay, emptyData, applyDay, processRange,
 };

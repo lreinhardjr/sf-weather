@@ -85,7 +85,7 @@ Scroll-phase thresholds are the two constants at the top of `script.js`.
 ### Data pipeline
 
 The panel's numbers come from `data.json`, which counts the days this year on which
-San Francisco had the highest daily high (hottest) or the lowest daily high (coldest)
+San Francisco had the highest daily high (hottest) or the lowest overnight low (coldest)
 among the cities in `data/cities.js`. Data is from Open-Meteo (free, no key).
 
 1. **Seed it once:** `npm run backfill` tallies January 1 through yesterday and writes
@@ -96,5 +96,7 @@ among the cities in `data/cities.js`. Data is from Open-Meteo (free, no key).
    once the folder is a GitHub repository, and commits `data.json` if it changed.
 3. **Adjust the cities:** edit `data/cities.js` (name + lat/lon), then re-run the backfill.
 
-Both counts use the daily high on purpose (see the comment at the top of `data/compute.js`).
-Ties count as a win for SF — nobody was hotter/colder.
+"Hottest" compares daily highs, "coldest" compares overnight lows (see the comment at the
+top of `data/compute.js`; an earlier version compared lowest daily *high*, which made SF
+"coldest" on ~65 days a year because of its cool foggy afternoons). Ties count as a win
+for SF — nobody was hotter/colder.
