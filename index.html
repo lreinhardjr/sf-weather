@@ -6,7 +6,6 @@
   <title>San Francisco: Hottest &amp; Coldest</title>
   <meta name="description" content="How often is San Francisco the hottest or the coldest city in the continental United States? A scroll-driven tally, updated daily.">
   <meta name="theme-color" content="#9fb8c9">
-  <link rel="preload" as="image" href="assets/warm-poster.jpg">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -19,23 +18,24 @@
   <main class="scroll-stage" id="stage">
     <section class="scene" id="scene" aria-label="Baker Beach and the Golden Gate Bridge, turning from sunny to foggy as you scroll">
 
-      <!-- Static posters: shown if a video fails to load, and under the videos while they buffer. -->
-      <img class="poster poster--warm" id="posterWarm" src="assets/warm-poster.jpg" alt="" decoding="async">
-      <img class="poster poster--cold" id="posterCold" src="assets/cold-poster.jpg" alt="" decoding="async">
+      <!-- Static posters: shown if a video fails to load. Sources are set by script.js
+           (desktop: assets/, portrait phones: assets/mobile/). -->
+      <img class="poster poster--warm" id="posterWarm" alt="" decoding="async">
+      <img class="poster poster--cold" id="posterCold" alt="" decoding="async">
 
       <!-- Phase 1 (progress 0 to WARM_END): sunny loop, playing. -->
       <video class="clip clip--warm is-visible" id="clipWarm"
-             src="assets/warm-loop.mp4" poster="assets/warm-poster.jpg"
              preload="auto" muted loop playsinline autoplay disablepictureinpicture></video>
 
-      <!-- Phase 2 (WARM_END to COLD_START): fog rolls in; currentTime is driven by scroll, never plays on its own. -->
+      <!-- Phase 2 (WARM_END to COLD_START): fog rolls in. On desktop its currentTime is driven by
+           scroll; on phones it is simply played (forward, or the reversed copy below). -->
       <video class="clip clip--transition" id="clipTransition"
-             src="assets/transition.mp4" poster="assets/warm-poster.jpg"
              preload="auto" muted playsinline disablepictureinpicture></video>
+      <video class="clip clip--transition" id="clipTransitionRev"
+             preload="none" muted playsinline disablepictureinpicture></video>
 
       <!-- Phase 3 (COLD_START to 1): foggy loop, playing. -->
       <video class="clip clip--cold" id="clipCold"
-             src="assets/cold-loop.mp4" poster="assets/cold-poster.jpg"
              preload="auto" muted loop playsinline disablepictureinpicture></video>
 
       <!-- Compact "liquid glass" metrics card, top-left. Neutral; never tinted by scroll position.
@@ -74,10 +74,14 @@
         <p class="footer">of <span id="totalDays">0</span> days so far this year</p>
       </aside>
 
-      <!-- Scroll nudge; fades out as soon as the visitor scrolls. -->
-      <div class="scroll-cue" id="scrollCue" aria-hidden="true">
+      <!-- Scroll nudges: one at the top (fog in), one at the bottom (back to the sun). -->
+      <div class="scroll-cue scroll-cue--down" id="scrollCue" aria-hidden="true">
         <span class="scroll-cue__text">Scroll to watch the fog roll in</span>
         <span class="scroll-cue__chevron"></span>
+      </div>
+      <div class="scroll-cue scroll-cue--up is-hidden" id="scrollCueUp" aria-hidden="true">
+        <span class="scroll-cue__chevron scroll-cue__chevron--up"></span>
+        <span class="scroll-cue__text">Scroll up for the sunny side</span>
       </div>
 
     </section>

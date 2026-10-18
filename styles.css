@@ -82,6 +82,7 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   background: transparent;
 }
 .clip.is-visible { opacity: 1; }
+.clip.is-top { z-index: 4; }        /* temporarily above the loops (phone rewind bounce) */
 .clip.is-dead { display: none; }   /* a clip that failed to load; its poster shows instead */
 
 /* --------------------------------------------------------------------------
@@ -301,6 +302,7 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   animation: cue-float 2.6s ease-in-out infinite;
 }
 .scroll-cue.is-hidden { opacity: 0; transform: translate(-50%, 10px); animation: none; }
+.scroll-cue--up.is-hidden { transform: translate(-50%, -10px); }
 
 .scroll-cue__text {
   font-size: 12px;
@@ -319,6 +321,15 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   transform: rotate(45deg);
   filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.45));
   animation: cue-bob 1.9s ease-in-out infinite;
+}
+
+.scroll-cue__chevron--up {
+  transform: rotate(225deg);
+  animation-name: cue-bob-up;
+}
+@keyframes cue-bob-up {
+  0%, 100% { transform: translateY(0) rotate(225deg); opacity: 0.55; }
+  50%      { transform: translateY(-6px) rotate(225deg); opacity: 1; }
 }
 
 @keyframes cue-float {
