@@ -31,6 +31,7 @@ html, body {
 }
 
 html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scroll would fight it. */
+body { overflow-x: hidden; }     /* never allow a sideways scroll (e.g. scrollbar-width overflow on Windows) */
 
 /* --------------------------------------------------------------------------
    Scroll stage + pinned scene
@@ -45,7 +46,7 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   position: -webkit-sticky;
   position: sticky;
   top: 0;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   height: 100svh;      /* mobile browsers: ignore the collapsing address bar */
   overflow: hidden;
