@@ -19,6 +19,11 @@
   /* Scroll progress at which the card swaps from the HOTTEST count (sunny) to the COLDEST count (foggy). */
   const METRIC_SWAP = 0.5;
 
+  /* The card is visible at the top and the bottom, hidden in between:
+       shown while progress < CARD_HIDE_AT, hidden until progress >= CARD_SHOW_AT. */
+  const CARD_HIDE_AT = 0.04;
+  const CARD_SHOW_AT = 0.9;
+
   /* First downward scroll auto-plays the whole scene: how long the ride to the bottom takes. */
   const AUTO_SCROLL_MS = 9000;
 
@@ -48,6 +53,8 @@
   const metricCold = document.getElementById('metricCold');
   const hotValue   = document.getElementById('hotValue');
   const coldValue  = document.getElementById('coldValue');
+  const hotBar     = document.getElementById('hotBar');
+  const coldBar    = document.getElementById('coldBar');
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const touchOnly     = window.matchMedia('(hover: none)').matches || navigator.maxTouchPoints > 0;
@@ -91,6 +98,7 @@
     if (phase === PHASE.TRANSITION) scrub();
     updatePosters();
     updateMetric();
+    updateCard();
 
     scrollCue.classList.toggle('is-hidden', progress > 0.02 || autoScrolling);
   }
@@ -101,6 +109,7 @@
 
   let activeMetric = 'hot';
   let dataLoaded = false;
+  let cardVisible = true;
 
   function updateMetric(force) {
     const want = progress >= METRIC_SWAP ? 'cold' : 'hot';
@@ -108,10 +117,24 @@
     activeMetric = want;
     metricHot.classList.toggle('is-active', want === 'hot');
     metricCold.classList.toggle('is-active', want === 'cold');
-    if (dataLoaded) {
-      const el = want === 'hot' ? hotValue : coldValue;
-      countUp(el, Number(el.dataset.target || 0), 900);
-    }
+  }
+
+  /* Card fades out as soon as the ride starts and fades back in at the bottom. */
+  function updateCard() {
+    const want = progress < CARD_HIDE_AT || progress >= CARD_SHOW_AT;
+    if (want === cardVisible) return;
+    cardVisible = want;
+    glass.classList.toggle('is-hidden', !want);
+    if (want && dataLoaded) animateActiveMetric(1200);
+  }
+
+  function animateActiveMetric(duration) {
+    const el  = activeMetric === 'hot' ? hotValue : coldValue;
+    const bar = activeMetric === 'hot' ? hotBar : coldBar;
+    const target = Number(el.dataset.target || 0);
+    countUp(el, target, duration);
+    bar.style.width = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = bar.dataset.width || '0%'; }));
   }
 
   /* ------------------------------------------------------------------------
@@ -311,11 +334,17 @@
 
     hotValue.dataset.target = String(hot);
     coldValue.dataset.target = String(cold);
+    const pct = (n) => (total > 0 ? Math.max(0, Math.min(100, (n / total) * 100)) : 0).toFixed(1) + '%';
+    hotBar.dataset.width = pct(hot);
+    coldBar.dataset.width = pct(cold);
     dataLoaded = true;
 
-    /* Count up whichever metric is showing; the other one is ready for its swap-in. */
-    countUp(hotValue, hot, activeMetric === 'hot' ? COUNT_UP_MS : 0);
-    countUp(coldValue, cold, activeMetric === 'cold' ? COUNT_UP_MS : 0);
+    /* Set both numbers, then animate whichever metric is showing. */
+    countUp(hotValue, hot, 0);
+    countUp(coldValue, cold, 0);
+    hotBar.style.width = hotBar.dataset.width;
+    coldBar.style.width = coldBar.dataset.width;
+    if (cardVisible) animateActiveMetric(COUNT_UP_MS);
   }
 
   const countUpTimers = new WeakMap();
@@ -362,11 +391,20 @@
   let autoScrollDone = false;
   let autoScrollRaf = 0;
 
-  const EASE_IN_OUT = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  /* Ride curve: a very short ease-in (so it visibly starts at once), a long steady
+     middle (the fog plays at a constant speed), and a gentle ease-out at the end. */
+  const RIDE_IN = 0.06, RIDE_OUT_FROM = 0.72;
+  const RIDE_V = 2 / (1 + RIDE_OUT_FROM - RIDE_IN);
+  function rideCurve(t) {
+    if (t < RIDE_IN) return RIDE_V * t * t / (2 * RIDE_IN);
+    if (t < RIDE_OUT_FROM) return RIDE_V * RIDE_IN / 2 + RIDE_V * (t - RIDE_IN);
+    const u = (t - RIDE_OUT_FROM) / (1 - RIDE_OUT_FROM);
+    return RIDE_V * RIDE_IN / 2 + RIDE_V * (RIDE_OUT_FROM - RIDE_IN) + RIDE_V * (1 - RIDE_OUT_FROM) * (u - u * u / 2);
+  }
 
   function startAutoScroll() {
     if (autoScrolling || autoScrollDone || reducedMotion) return false;
-    if (readProgress() > 0.08) return false;           // only from (near) the top
+    if (readProgress() > 0.25) return false;           // only from the top part of the page
     const from = window.scrollY || 0;
     const to = stage.offsetHeight - window.innerHeight;
     if (to <= from) return false;
@@ -378,7 +416,7 @@
     const frame = (now) => {
       if (!autoScrolling) return;
       const t = clamp((now - t0) / AUTO_SCROLL_MS, 0, 1);
-      window.scrollTo(0, from + (to - from) * EASE_IN_OUT(t));
+      window.scrollTo(0, from + (to - from) * Math.min(1, rideCurve(t)));
       requestTick();
       if (t < 1) autoScrollRaf = requestAnimationFrame(frame);
       else finishAutoScroll();

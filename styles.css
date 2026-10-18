@@ -93,20 +93,29 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   top: max(20px, env(safe-area-inset-top));
   left: max(20px, env(safe-area-inset-left));
   z-index: 10;
-  width: 244px;
-  padding: 16px 18px 14px;
-  border-radius: 20px;
+  width: 252px;
+  padding: 14px 16px 15px;
+  border-radius: 22px;
   overflow: hidden;
   isolation: isolate;
 
   /* Liquid glass, dialled down */
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.36);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   backdrop-filter: blur(30px) saturate(180%);
   border: 0.5px solid rgba(255, 255, 255, 0.7);
   box-shadow:
     0 14px 40px rgba(10, 20, 30, 0.16),
     0 1px 3px rgba(10, 20, 30, 0.08);
+
+  transition: opacity 0.7s var(--ease), transform 0.9s var(--ease);
+}
+
+/* Hidden while the fog rolls in (toggled by script.js). */
+.glass.is-hidden {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.985);
+  pointer-events: none;
 }
 
 /* 1px inner top highlight */
@@ -150,14 +159,32 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.35), 0 0 14px rgba(12, 22, 32, 0.08);
 }
 
-.eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 2.4px;
+/* Header: place on the left, year chip on the right. */
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 0.5px solid rgba(11, 17, 24, 0.14);
+}
+.card__place {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
   text-transform: uppercase;
-  white-space: nowrap;
-  color: rgba(11, 17, 24, 0.66);
-  margin-bottom: 10px;
+  color: rgba(11, 17, 24, 0.72);
+}
+.card__year {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: rgba(11, 17, 24, 0.72);
+  background: rgba(11, 17, 24, 0.07);
+  border: 0.5px solid rgba(11, 17, 24, 0.08);
+  font-variant-numeric: tabular-nums;
 }
 
 /* The two metrics sit on top of each other; one is active at a time. */
@@ -177,37 +204,72 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   transform: none;
 }
 
+/* Title row: small icon in a tinted disc + two-line label. */
+.metric__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+.metric__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+  color: #0b1118;
+}
+.metric__icon--sun { background: rgba(255, 171, 64, 0.32); color: #7a4200; }
+.metric__icon--fog { background: rgba(96, 125, 150, 0.26); color: #24384a; }
+
 .metric__label {
-  margin: 0 0 2px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 1.2px;
+  line-height: 1.25;
+  letter-spacing: 1.1px;
   text-transform: uppercase;
-  color: rgba(11, 17, 24, 0.62);
-  white-space: nowrap;
+  color: rgba(11, 17, 24, 0.66);
 }
 
+/* The number is the hero. */
 .metric__row {
   margin: 0;
   display: flex;
   align-items: baseline;
   gap: 7px;
 }
-
 .metric__value {
-  font-size: 44px;
+  font-size: 54px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 0.95;
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
   color: #0b1118;
 }
-
 .metric__unit {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   text-transform: lowercase;
   color: rgba(11, 17, 24, 0.62);
+}
+
+/* Share-of-year bar under the number. */
+.metric__bar {
+  margin-top: 11px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(11, 17, 24, 0.12);
+  overflow: hidden;
+}
+.metric__bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  min-width: 0;
+  border-radius: inherit;
+  background: rgba(11, 17, 24, 0.72);
+  transition: width 1.8s var(--ease);
 }
 
 .footer {
@@ -273,16 +335,16 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
    -------------------------------------------------------------------------- */
 
 @media (max-width: 520px) {
-  .glass { top: max(14px, env(safe-area-inset-top)); left: 14px; width: 212px; padding: 13px 15px 12px; border-radius: 18px; }
-  .eyebrow { letter-spacing: 1.8px; }
-  .metric__value { font-size: 38px; }
+  .glass { top: max(14px, env(safe-area-inset-top)); left: 14px; width: 222px; padding: 12px 14px 13px; border-radius: 20px; }
+  .card__place { letter-spacing: 1.6px; }
+  .metric__value { font-size: 44px; }
   .scroll-cue__text { font-size: 11px; letter-spacing: 1.8px; }
 }
 
 @media (max-height: 460px) and (orientation: landscape) {
-  .glass { width: 200px; padding: 10px 14px; }
-  .metric__value { font-size: 32px; }
-  .eyebrow { margin-bottom: 6px; }
+  .glass { width: 210px; padding: 10px 14px; }
+  .metric__value { font-size: 36px; }
+  .card__head { padding-bottom: 6px; margin-bottom: 8px; }
 }
 
 /* --------------------------------------------------------------------------
@@ -291,5 +353,5 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
 
 @media (prefers-reduced-motion: reduce) {
   .scroll-cue, .scroll-cue__chevron { animation: none; }
-  .glass::after, .scroll-cue, .metric { transition: none; }
+  .glass, .glass::after, .scroll-cue, .metric, .metric__bar-fill { transition: none; }
 }
