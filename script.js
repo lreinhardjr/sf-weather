@@ -16,6 +16,12 @@
   const WARM_END   = 0.15;
   const COLD_START = 0.85;
 
+  /* Scroll progress at which the card swaps from the HOTTEST count (sunny) to the COLDEST count (foggy). */
+  const METRIC_SWAP = 0.5;
+
+  /* First downward scroll auto-plays the whole scene: how long the ride to the bottom takes. */
+  const AUTO_SCROLL_MS = 9000;
+
   /* How many discrete steps the scrub uses when the visitor prefers reduced motion. */
   const REDUCED_MOTION_STEPS = 12;
 
@@ -38,6 +44,10 @@
   const posterCold = document.getElementById('posterCold');
   const scrollCue  = document.getElementById('scrollCue');
   const glass      = document.getElementById('glass');
+  const metricHot  = document.getElementById('metricHot');
+  const metricCold = document.getElementById('metricCold');
+  const hotValue   = document.getElementById('hotValue');
+  const coldValue  = document.getElementById('coldValue');
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const touchOnly     = window.matchMedia('(hover: none)').matches || navigator.maxTouchPoints > 0;
@@ -80,8 +90,28 @@
     if (next !== phase) setPhase(next);
     if (phase === PHASE.TRANSITION) scrub();
     updatePosters();
+    updateMetric();
 
-    scrollCue.classList.toggle('is-hidden', progress > 0.02);
+    scrollCue.classList.toggle('is-hidden', progress > 0.02 || autoScrolling);
+  }
+
+  /* ------------------------------------------------------------------------
+     Card metric: HOTTEST count over the sunny scene, COLDEST once the fog is in.
+     ------------------------------------------------------------------------ */
+
+  let activeMetric = 'hot';
+  let dataLoaded = false;
+
+  function updateMetric(force) {
+    const want = progress >= METRIC_SWAP ? 'cold' : 'hot';
+    if (want === activeMetric && !force) return;
+    activeMetric = want;
+    metricHot.classList.toggle('is-active', want === 'hot');
+    metricCold.classList.toggle('is-active', want === 'cold');
+    if (dataLoaded) {
+      const el = want === 'hot' ? hotValue : coldValue;
+      countUp(el, Number(el.dataset.target || 0), 900);
+    }
   }
 
   /* ------------------------------------------------------------------------
@@ -279,20 +309,28 @@
     document.getElementById('year').textContent = String(year);
     document.getElementById('totalDays').textContent = total.toLocaleString();
 
-    countUp(document.getElementById('hotValue'), hot);
-    countUp(document.getElementById('coldValue'), cold);
+    hotValue.dataset.target = String(hot);
+    coldValue.dataset.target = String(cold);
+    dataLoaded = true;
+
+    /* Count up whichever metric is showing; the other one is ready for its swap-in. */
+    countUp(hotValue, hot, activeMetric === 'hot' ? COUNT_UP_MS : 0);
+    countUp(coldValue, cold, activeMetric === 'cold' ? COUNT_UP_MS : 0);
   }
 
-  function countUp(el, target) {
+  const countUpTimers = new WeakMap();
+
+  function countUp(el, target, duration) {
     el.dataset.target = String(target);
-    if (reducedMotion || target === 0) { el.textContent = String(target); return; }
+    if (countUpTimers.has(el)) cancelAnimationFrame(countUpTimers.get(el));
+    if (reducedMotion || target === 0 || !duration) { el.textContent = String(target); return; }
     const start = performance.now();
     const frame = (now) => {
-      const t = clamp((now - start) / COUNT_UP_MS, 0, 1);
+      const t = clamp((now - start) / duration, 0, 1);
       el.textContent = String(Math.round(EASE_OUT(t) * target));
-      if (t < 1) requestAnimationFrame(frame);
+      if (t < 1) countUpTimers.set(el, requestAnimationFrame(frame));
     };
-    requestAnimationFrame(frame);
+    countUpTimers.set(el, requestAnimationFrame(frame));
   }
 
   function loadData() {
@@ -315,6 +353,87 @@
   }
 
   /* ------------------------------------------------------------------------
+     Auto-scroll: the first downward scroll (wheel, swipe or key) near the top
+     takes the visitor smoothly all the way to the bottom, playing the fog in.
+     Scrolling up during the ride cancels it and hands control back.
+     ------------------------------------------------------------------------ */
+
+  let autoScrolling = false;
+  let autoScrollDone = false;
+  let autoScrollRaf = 0;
+
+  const EASE_IN_OUT = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  function startAutoScroll() {
+    if (autoScrolling || autoScrollDone || reducedMotion) return false;
+    if (readProgress() > 0.08) return false;           // only from (near) the top
+    const from = window.scrollY || 0;
+    const to = stage.offsetHeight - window.innerHeight;
+    if (to <= from) return false;
+
+    autoScrolling = true;
+    scrollCue.classList.add('is-hidden');
+    const t0 = performance.now();
+
+    const frame = (now) => {
+      if (!autoScrolling) return;
+      const t = clamp((now - t0) / AUTO_SCROLL_MS, 0, 1);
+      window.scrollTo(0, from + (to - from) * EASE_IN_OUT(t));
+      requestTick();
+      if (t < 1) autoScrollRaf = requestAnimationFrame(frame);
+      else finishAutoScroll();
+    };
+    autoScrollRaf = requestAnimationFrame(frame);
+    return true;
+  }
+
+  function finishAutoScroll() {
+    autoScrolling = false;
+    autoScrollDone = true;
+    cancelAnimationFrame(autoScrollRaf);
+  }
+
+  function cancelAutoScroll() {
+    if (!autoScrolling) return;
+    finishAutoScroll();
+  }
+
+  /* Wheel: first downward tick starts the ride; an upward tick during it cancels. */
+  window.addEventListener('wheel', (e) => {
+    if (autoScrolling) {
+      if (e.deltaY < 0) { cancelAutoScroll(); return; }
+      e.preventDefault();                                // don't fight the animation
+      return;
+    }
+    if (e.deltaY > 0 && startAutoScroll()) e.preventDefault();
+  }, { passive: false });
+
+  /* Touch: a swipe up (= scroll down) starts the ride; swipes during it are swallowed. */
+  let touchStartY = null;
+  window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (autoScrolling) { e.preventDefault(); return; }
+    if (touchStartY == null) return;
+    const dy = e.touches[0].clientY - touchStartY;
+    if (dy < -8 && startAutoScroll()) e.preventDefault();
+  }, { passive: false });
+
+  /* Keyboard: down arrow, page down, space or End. */
+  window.addEventListener('keydown', (e) => {
+    const downKeys = ['ArrowDown', 'PageDown', ' ', 'End'];
+    if (autoScrolling) {
+      if (['ArrowUp', 'PageUp', 'Home'].includes(e.key)) cancelAutoScroll();
+      else if (downKeys.includes(e.key)) e.preventDefault();
+      return;
+    }
+    if (downKeys.includes(e.key) && startAutoScroll()) e.preventDefault();
+  });
+
+  /* Always start at the top (sunny), even on reload. */
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  if (window.scrollY > 0) window.scrollTo(0, 0);
+
+  /* ------------------------------------------------------------------------
      Boot
      ------------------------------------------------------------------------ */
 
@@ -323,5 +442,6 @@
 
   loadData();
   tick();
+  updateMetric(true);
   safePlay(clipWarm);
 })();

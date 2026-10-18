@@ -38,33 +38,30 @@
              src="assets/cold-loop.mp4" poster="assets/cold-poster.jpg"
              preload="auto" muted loop playsinline disablepictureinpicture></video>
 
-      <!-- Fixed "liquid glass" metrics panel. Neutral; never tinted by scroll position. -->
-      <div class="panel-wrap">
-        <article class="glass" id="glass" aria-live="polite">
-          <p class="eyebrow" id="eyebrow">San Francisco &middot; <span id="year">2026</span></p>
+      <!-- Compact "liquid glass" metrics card, top-left. Neutral; never tinted by scroll position.
+           Shows the HOTTEST count over the sunny scene and swaps to the COLDEST count once the fog
+           has rolled in (see METRIC_SWAP in script.js). -->
+      <aside class="glass" id="glass" aria-live="polite">
+        <p class="eyebrow">San Francisco &middot; <span id="year">2026</span></p>
 
-          <div class="metrics">
-            <div class="metric">
-              <p class="metric__label">Hottest in USA</p>
-              <p class="metric__value" id="hotValue" data-target="0">0</p>
-              <p class="metric__unit">days</p>
-            </div>
-            <div class="metric__divider" aria-hidden="true"></div>
-            <div class="metric">
-              <p class="metric__label">Coldest in USA</p>
-              <p class="metric__value" id="coldValue" data-target="0">0</p>
-              <p class="metric__unit">days</p>
-            </div>
+        <div class="metric-stack">
+          <div class="metric metric--hot is-active" id="metricHot">
+            <p class="metric__label">Hottest city in the US</p>
+            <p class="metric__row"><span class="metric__value" id="hotValue">0</span><span class="metric__unit">days</span></p>
           </div>
+          <div class="metric metric--cold" id="metricCold">
+            <p class="metric__label">Coldest city in the US</p>
+            <p class="metric__row"><span class="metric__value" id="coldValue">0</span><span class="metric__unit">days</span></p>
+          </div>
+        </div>
 
-          <p class="footer">Out of <span id="totalDays">0</span> days so far this year.</p>
-        </article>
-      </div>
+        <p class="footer">of <span id="totalDays">0</span> days so far this year</p>
+      </aside>
 
-      <!-- Small scroll cue; fades out once the visitor starts scrolling. -->
+      <!-- Scroll nudge; fades out as soon as the visitor scrolls. -->
       <div class="scroll-cue" id="scrollCue" aria-hidden="true">
-        <span>Scroll</span>
-        <span class="scroll-cue__arrow"></span>
+        <span class="scroll-cue__text">Scroll to watch the fog roll in</span>
+        <span class="scroll-cue__chevron"></span>
       </div>
 
     </section>
