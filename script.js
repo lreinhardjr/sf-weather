@@ -382,13 +382,15 @@
   }
 
   /* ------------------------------------------------------------------------
-     Auto-scroll: the first downward scroll (wheel, swipe or key) near the top
-     takes the visitor smoothly all the way to the bottom, playing the fog in.
-     Scrolling up during the ride cancels it and hands control back.
+     Auto-scroll ("the ride"): a downward scroll from the top part of the page
+     rides smoothly to the bottom, playing the fog in; an upward scroll from the
+     bottom part rides back to the top, playing it out. It works every time, so
+     the scene can be replayed. Scrolling against the ride cancels it and hands
+     control back; from the middle of the page scrolling is manual.
      ------------------------------------------------------------------------ */
 
   let autoScrolling = false;
-  let autoScrollDone = false;
+  let autoDir = 0;            // +1 riding down, -1 riding up
   let autoScrollRaf = 0;
 
   /* Ride curve: a very short ease-in (so it visibly starts at once), a long steady
@@ -402,14 +404,22 @@
     return RIDE_V * RIDE_IN / 2 + RIDE_V * (RIDE_OUT_FROM - RIDE_IN) + RIDE_V * (1 - RIDE_OUT_FROM) * (u - u * u / 2);
   }
 
-  function startAutoScroll() {
-    if (autoScrolling || autoScrollDone || reducedMotion) return false;
-    if (readProgress() > 0.25) return false;           // only from the top part of the page
+  /* Where a ride may begin: down from the top quarter, up from the bottom quarter. */
+  const RIDE_DOWN_FROM_BELOW = 0.25;
+  const RIDE_UP_FROM_ABOVE   = 0.75;
+
+  function startAutoScroll(dir) {
+    if (autoScrolling || reducedMotion) return false;
+    const p = readProgress();
+    if (dir > 0 && p > RIDE_DOWN_FROM_BELOW) return false;
+    if (dir < 0 && p < RIDE_UP_FROM_ABOVE) return false;
+
     const from = window.scrollY || 0;
-    const to = stage.offsetHeight - window.innerHeight;
-    if (to <= from) return false;
+    const to = dir > 0 ? stage.offsetHeight - window.innerHeight : 0;
+    if (Math.abs(to - from) < 2) return false;        // already there
 
     autoScrolling = true;
+    autoDir = dir;
     scrollCue.classList.add('is-hidden');
     const t0 = performance.now();
 
@@ -427,44 +437,46 @@
 
   function finishAutoScroll() {
     autoScrolling = false;
-    autoScrollDone = true;
+    autoDir = 0;
     cancelAnimationFrame(autoScrollRaf);
+    requestTick();
   }
 
-  function cancelAutoScroll() {
-    if (!autoScrolling) return;
-    finishAutoScroll();
-  }
-
-  /* Wheel: first downward tick starts the ride; an upward tick during it cancels. */
+  /* Wheel: a tick in the ride's direction is swallowed; against it, the ride stops. */
   window.addEventListener('wheel', (e) => {
+    const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0;
+    if (!dir) return;
     if (autoScrolling) {
-      if (e.deltaY < 0) { cancelAutoScroll(); return; }
-      e.preventDefault();                                // don't fight the animation
+      if (dir !== autoDir) finishAutoScroll();
+      else e.preventDefault();
       return;
     }
-    if (e.deltaY > 0 && startAutoScroll()) e.preventDefault();
+    if (startAutoScroll(dir)) e.preventDefault();
   }, { passive: false });
 
-  /* Touch: a swipe up (= scroll down) starts the ride; swipes during it are swallowed. */
+  /* Touch: a swipe up (= scroll down) or down starts the ride; swipes during it are swallowed. */
   let touchStartY = null;
   window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
   window.addEventListener('touchmove', (e) => {
     if (autoScrolling) { e.preventDefault(); return; }
     if (touchStartY == null) return;
     const dy = e.touches[0].clientY - touchStartY;
-    if (dy < -8 && startAutoScroll()) e.preventDefault();
+    const dir = dy < -8 ? 1 : dy > 8 ? -1 : 0;
+    if (dir && startAutoScroll(dir)) e.preventDefault();
   }, { passive: false });
 
-  /* Keyboard: down arrow, page down, space or End. */
+  /* Keyboard: arrows, page keys, space, Home/End. */
+  const DOWN_KEYS = ['ArrowDown', 'PageDown', ' ', 'End'];
+  const UP_KEYS   = ['ArrowUp', 'PageUp', 'Home'];
   window.addEventListener('keydown', (e) => {
-    const downKeys = ['ArrowDown', 'PageDown', ' ', 'End'];
+    const dir = DOWN_KEYS.includes(e.key) ? 1 : UP_KEYS.includes(e.key) ? -1 : 0;
+    if (!dir) return;
     if (autoScrolling) {
-      if (['ArrowUp', 'PageUp', 'Home'].includes(e.key)) cancelAutoScroll();
-      else if (downKeys.includes(e.key)) e.preventDefault();
+      if (dir !== autoDir) finishAutoScroll();
+      else e.preventDefault();
       return;
     }
-    if (downKeys.includes(e.key) && startAutoScroll()) e.preventDefault();
+    if (startAutoScroll(dir)) e.preventDefault();
   });
 
   /* Always start at the top (sunny), even on reload. */
