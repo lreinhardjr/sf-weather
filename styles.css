@@ -226,7 +226,7 @@ body { overflow-x: hidden; }     /* never allow a sideways scroll (e.g. scrollba
   color: #0b1118;
 }
 .metric__icon--sun { background: #d54c20; color: #fff; }   /* the bridge's sunlit orange, sampled from the warm frame */
-.metric__icon--fog { background: rgba(96, 125, 150, 0.26); color: #24384a; }
+.metric__icon--fog { background: #6e7b8a; color: #fff; }   /* the fog-bank grey on the headland, sampled from the foggy frame */
 
 .metric__label {
   font-size: 10.5px;
