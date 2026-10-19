@@ -83,7 +83,10 @@ body { overflow-x: hidden; }     /* never allow a sideways scroll (e.g. scrollba
   background: transparent;
 }
 .clip.is-visible { opacity: 1; }
-.clip.is-top { z-index: 4; }        /* temporarily above the loops (phone rewind bounce) */
+/* The foggy loop's first frame is lit a touch warmer than the fog clip's last frame,
+   so that one handoff gets a short crossfade instead of a hard cut. */
+.clip--cold { transition: opacity 0.5s linear; }
+.clip.is-top { z-index: 4; transition: opacity 0.4s linear; }   /* above the loops (phone rewind bounce) */
 .clip.is-dead { display: none; }   /* a clip that failed to load; its poster shows instead */
 
 /* --------------------------------------------------------------------------

@@ -30,18 +30,22 @@
   /* The ride: how long a full top↔bottom auto-scroll takes (desktop scrub mode).
      In phone play mode the fog clip is played at PHONE_PLAYBACK_RATE instead
      (the 8 s clip at 2x = 4 s, matching the desktop ride). */
-  const AUTO_SCROLL_MS = 4500;
-  const PHONE_PLAYBACK_RATE = 2;
+  const AUTO_SCROLL_MS = 2250;
+  const PHONE_PLAYBACK_RATE = 4;       // browsers that cap the rate just ride a little slower
   const RIDE_DOWN_FROM_BELOW = 0.25;   // a downward ride may start anywhere above this
   const RIDE_UP_FROM_ABOVE   = 0.75;   // an upward ride may start anywhere below this
   const LEAD_MS = 450;                 // phone mode: quick scroll into / out of the fog band
 
   /* Rewind bounce at the bottom: after a ride down, the fog briefly rewinds and
      returns as a hint that the visitor can scroll back up to the sunny side. */
-  const BOUNCE_DELAY_MS = 700;
-  const BOUNCE_MS       = 1800;        // desktop: whole bounce (scroll out and back)
+  const BOUNCE_DELAY_MS = 600;
+  const BOUNCE_MS       = 1400;        // desktop: whole bounce (scroll out and back)
   const BOUNCE_DEPTH    = 0.78;        // desktop: how far back into the fog band it dips
-  const BOUNCE_HALF_MS  = 900;         // phone: how long the reversed clip plays before returning
+  const BOUNCE_HALF_MS  = 700;         // phone: how long the reversed clip plays before returning
+
+  /* The fog clip → foggy loop handoff is crossfaded (see .clip--cold in styles.css);
+     the fog clip stays visible underneath for this long. */
+  const HANDOFF_FADE_MS = 500;
 
   /* Reduced motion: scrub in coarser steps, no rides, no bounce. */
   const REDUCED_MOTION_STEPS = 12;
@@ -186,6 +190,17 @@
     const loop = incoming;
     const startLoop = () => { loop.classList.add('is-visible'); safePlay(loop); };
 
+    /* The foggy loop fades in over the fog clip's last frame, so keep that clip
+       underneath until the fade is done (unless the phase changes again first). */
+    const hideOutgoing = () => {
+      if (next === PHASE.COLD && outgoing && outgoing !== clipWarm) {
+        const seq = ++handoffSeq;
+        setTimeout(() => { if (handoffSeq === seq && phase === PHASE.COLD) hideAndPause(outgoing); }, HANDOFF_FADE_MS);
+      } else {
+        hideAndPause(outgoing);
+      }
+    };
+
     if (loop.readyState >= 2 && Math.abs(loop.currentTime) > 0.01) {
       let done = false;
       const finish = () => {
@@ -193,16 +208,18 @@
         done = true;
         loop.removeEventListener('seeked', finish);
         startLoop();
-        hideAndPause(outgoing);
+        hideOutgoing();
       };
       loop.addEventListener('seeked', finish, { once: true });
       setTimeout(finish, 150);
       try { loop.currentTime = 0; } catch (e) { finish(); }
     } else {
       startLoop();
-      hideAndPause(outgoing);
+      hideOutgoing();
     }
   }
+
+  let handoffSeq = 0;
 
   function hideAndPause(clip) {
     if (!clip) return;
@@ -643,8 +660,9 @@
         clearTimeout(timer);
         [clipTrans, clipTransRev].forEach((v) => {
           v.removeEventListener('ended', finish);
-          v.classList.remove('is-top', 'is-visible');
+          v.classList.remove('is-visible');                 // fades out (see .clip.is-top)
           try { v.pause(); } catch (e) { /* ignore */ }
+          setTimeout(() => { if (!bouncing) v.classList.remove('is-top'); }, 450);
         });
         activeTrans = clipTrans;
       };
