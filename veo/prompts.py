@@ -112,3 +112,14 @@ COLD_NEGATIVE = (
     "ships, birds, lens flare, text, captions, watermark, logo, sudden lighting changes, "
     "morphing, warping, music, speech"
 )
+
+# ---------------------------------------------------------------------------
+# Loop suffix — appended to WARM_LOOP / COLD_LOOP when generating with --loop,
+# where the same still is given as both the first and the last frame.
+# ---------------------------------------------------------------------------
+LOOP_SUFFIX = (
+    "This clip is a seamless loop: it must end on exactly the same frame it started on, "
+    "matching the provided start and end frames. The waves, water sheet and fog drift "
+    "through one gentle cycle and return to their starting positions by the final frame, "
+    "with no fade, no cut and no change of light. Fixed camera throughout."
+)

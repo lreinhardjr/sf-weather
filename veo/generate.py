@@ -22,6 +22,13 @@ Usage (run from the veo/ folder):
     python generate.py finalize --warm 1 --transition 2 --cold 1
     python generate.py frames takes/transition_take2.mp4   # dump first/last frame PNGs
 
+True loops (first frame == last frame, so the clip can repeat with no jump):
+    python generate.py warm --loop [--takes 1]             # takes/warmloop_takeN.mp4, from warm.png
+    python generate.py cold --loop --first-frame keyframes/cold-end.png
+                                                           # takes/coldloop_takeN.mp4, starting on the
+                                                           # fog clip's exact last frame (see `frames`)
+    python generate.py finalize --warm-loop 1 --transition 4 --cold-loop 1
+
 Flags: --fast  use the Fast Veo model (cheap drafts).  Default is the standard
        (highest quality) Veo 3.1 model, as requested.
 
@@ -75,9 +82,9 @@ def client():
 
 
 def estimate_cost(model, takes):
-    # Approximate list prices per second of 1080p output (video with audio);
-    # confirm on ai.google.dev/pricing before large runs.
-    per_sec = 0.15 if "fast" in model else 0.40
+    # List prices per second of 1080p output (ai.google.dev/gemini-api/docs/pricing, Oct 2026):
+    # Veo 3.1 standard $0.40/s, Veo 3.1 Fast $0.12/s. Confirm before large runs.
+    per_sec = 0.12 if "fast" in model else 0.40
     return takes * CONFIG["duration_seconds"] * per_sec
 
 
@@ -209,9 +216,13 @@ def load_image(path):
     return types.Image.from_file(location=str(path))
 
 
-def generate_videos(c, model, prompt, negative, first_frame, last_frame, out_prefix, takes):
+def generate_videos(c, model, prompt, negative, first_frame, last_frame, out_prefix, takes, dry_run=False):
     cost = estimate_cost(model, takes)
     print(f"\nModel: {model}   takes: {takes}   est. cost: ~${cost:.2f}")
+    print(f"  first frame: {first_frame}\n  last frame:  {last_frame if last_frame else '(none)'}")
+    if dry_run:
+        print("  --dry-run: nothing generated, nothing charged.")
+        return
     cfg = dict(
         aspect_ratio=CONFIG["aspect_ratio"],
         resolution=CONFIG["resolution"],
@@ -255,23 +266,34 @@ def require(path, hint):
         sys.exit(f"Missing {path}. {hint}")
 
 
+def loop_args(args, default_first, prompt, negative, prefix):
+    """Shared by warm/cold: with --loop the same still is the first AND last frame."""
+    first = Path(args.first_frame) if args.first_frame else default_first
+    require(first, "Run `python generate.py keyframes` first (or pass --first-frame).")
+    if args.loop:
+        return prompt + " " + prompts.LOOP_SUFFIX, negative, first, first, prefix + "loop"
+    return prompt, negative, first, None, prefix
+
+
 def cmd_warm(args):
-    require(KEYFRAMES / "warm.png", "Run `python generate.py keyframes` first.")
-    generate_videos(client(), pick_model(args), prompts.WARM_LOOP, prompts.WARM_NEGATIVE,
-                    KEYFRAMES / "warm.png", None, "warm", args.takes)
+    prompt, negative, first, last, prefix = loop_args(args, KEYFRAMES / "warm.png",
+                                                      prompts.WARM_LOOP, prompts.WARM_NEGATIVE, "warm")
+    generate_videos(None if args.dry_run else client(), pick_model(args), prompt, negative, first, last, prefix,
+                    args.takes, args.dry_run)
 
 
 def cmd_transition(args):
     require(KEYFRAMES / "warm.png", "Run keyframes first.")
     require(KEYFRAMES / "cold.png", "Run keyframes first.")
-    generate_videos(client(), pick_model(args), prompts.TRANSITION, prompts.TRANSITION_NEGATIVE,
-                    KEYFRAMES / "warm.png", KEYFRAMES / "cold.png", "transition", args.takes)
+    generate_videos(None if args.dry_run else client(), pick_model(args), prompts.TRANSITION, prompts.TRANSITION_NEGATIVE,
+                    KEYFRAMES / "warm.png", KEYFRAMES / "cold.png", "transition", args.takes, args.dry_run)
 
 
 def cmd_cold(args):
-    require(KEYFRAMES / "cold.png", "Run keyframes first.")
-    generate_videos(client(), pick_model(args), prompts.COLD_LOOP, prompts.COLD_NEGATIVE,
-                    KEYFRAMES / "cold.png", None, "cold", args.takes)
+    prompt, negative, first, last, prefix = loop_args(args, KEYFRAMES / "cold.png",
+                                                      prompts.COLD_LOOP, prompts.COLD_NEGATIVE, "cold")
+    generate_videos(None if args.dry_run else client(), pick_model(args), prompt, negative, first, last, prefix,
+                    args.takes, args.dry_run)
 
 
 # ---------------------------------------------------------------------------
@@ -290,10 +312,14 @@ def cmd_frames(args):
 
 
 def cmd_finalize(args):
+    if (args.warm is None) == (args.warm_loop is None) or (args.cold is None) == (args.cold_loop is None):
+        sys.exit("Give exactly one of --warm/--warm-loop and one of --cold/--cold-loop.")
+    warm_src = TAKES / (f"warmloop_take{args.warm_loop}.mp4" if args.warm_loop else f"warm_take{args.warm}.mp4")
+    cold_src = TAKES / (f"coldloop_take{args.cold_loop}.mp4" if args.cold_loop else f"cold_take{args.cold}.mp4")
     mapping = {
-        "warm-loop.mp4": TAKES / f"warm_take{args.warm}.mp4",
+        "warm-loop.mp4": warm_src,
         "transition.mp4": TAKES / f"transition_take{args.transition}.mp4",
-        "cold-loop.mp4": TAKES / f"cold_take{args.cold}.mp4",
+        "cold-loop.mp4": cold_src,
     }
     for name, src in mapping.items():
         require(src, "Check the take number.")
@@ -326,12 +352,20 @@ def main():
         s = sub.add_parser(name)
         s.add_argument("--takes", type=int, default=default_takes)
         s.add_argument("--fast", action="store_true", help="use the Fast model for cheap drafts")
+        s.add_argument("--dry-run", action="store_true", help="print model, frames and cost; generate nothing")
+        if name != "transition":
+            s.add_argument("--loop", action="store_true",
+                           help="true loop: the first frame is also the last frame (takes/<name>loop_takeN.mp4)")
+            s.add_argument("--first-frame", metavar="PNG",
+                           help="start from this still instead of the keyframe (e.g. keyframes/cold-end.png)")
         s.set_defaults(fn=fn)
     f = sub.add_parser("frames"); f.add_argument("video"); f.set_defaults(fn=cmd_frames)
     z = sub.add_parser("finalize")
-    z.add_argument("--warm", type=int, required=True)
+    z.add_argument("--warm", type=int, help="warm_takeN")
+    z.add_argument("--warm-loop", type=int, help="warmloop_takeN (true loop)")
     z.add_argument("--transition", type=int, required=True)
-    z.add_argument("--cold", type=int, required=True)
+    z.add_argument("--cold", type=int, help="cold_takeN")
+    z.add_argument("--cold-loop", type=int, help="coldloop_takeN (true loop)")
     z.set_defaults(fn=cmd_finalize)
     args = p.parse_args()
     args.fn(args)
