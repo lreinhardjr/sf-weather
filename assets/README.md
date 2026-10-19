@@ -5,9 +5,12 @@ replaced with higher-quality re-renders at any time without touching the code.
 
 | File | What it is | Used when |
 |---|---|---|
-| `warm-loop.mp4` | sunny Baker Beach, seamless loop | top of the page (scroll progress 0 – 0.15) |
-| `transition.mp4` | sunny → foggy, scrubbed by scroll | middle (0.15 – 0.85) |
-| `cold-loop.mp4` | foggy Baker Beach, seamless loop | bottom (0.85 – 1) |
+| `warm-loop.mp4` | sunny Baker Beach, 8 s Veo master | source for `warm-loop-16s.mp4` |
+| `warm-loop-16s.mp4` | the master played forward then backward: a seamless 16 s loop | top of the page (scroll progress 0 – 0.15) |
+| `transition.mp4` | sunny → foggy, scrubbed by scroll (played on phones) | middle (0.15 – 0.85) |
+| `transition-reverse.mp4` | the same clip reversed; phones play it for the ride back up | middle, phones only |
+| `cold-loop.mp4` | foggy Baker Beach, 8 s Veo master | source for `cold-loop-16s.mp4` |
+| `cold-loop-16s.mp4` | the master played backward then forward: seamless 16 s loop that starts on the clip's greyer last frame | bottom (0.85 – 1) |
 | `warm-poster.jpg` | still of the sunny scene | before the videos load, or if `warm-loop` / early `transition` fails |
 | `cold-poster.jpg` | still of the foggy scene | before the videos load, or if `cold-loop` / late `transition` fails |
 
@@ -25,12 +28,18 @@ No audio. The phase thresholds (0.15 / 0.85) are constants at the top of `../scr
 | phone or tablet in landscape | `assets/*.mp4` plus `assets/transition-reverse.mp4` — the fog clip is *played* forward / the reversed copy played backward |
 | phone in portrait | `assets/mobile/*` — same clips cropped to 9:16 (608×1080, centre-right, x=900) at ~2 MB each |
 
-Regenerate them whenever the three master clips change (free, takes a minute):
+Regenerate them whenever the three master clips change (free, takes a minute or two).
+The 8 s Veo loops don't actually loop (their last frame doesn't match their first), so
+the site plays 16 s "ping-pong" versions instead: forward then backward, which can never jump.
 
 ```bash
 cd assets && X=900
-ffmpeg -y -i warm-loop.mp4  -vf "crop=608:1080:$X:0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/warm-loop.mp4
-ffmpeg -y -i cold-loop.mp4  -vf "crop=608:1080:$X:0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/cold-loop.mp4
+# 16 s seamless loops (full size and phone crop)
+ffmpeg -y -i warm-loop.mp4 -filter_complex "[0:v]split[a][b];[b]reverse,trim=start_frame=1,setpts=PTS-STARTPTS[r];[a][r]concat=n=2:v=1:a=0" -c:v libx264 -crf 20 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an warm-loop-16s.mp4
+ffmpeg -y -i cold-loop.mp4 -filter_complex "[0:v]split[a][b];[a]reverse[r];[b]trim=start_frame=1,setpts=PTS-STARTPTS[f];[r][f]concat=n=2:v=1:a=0" -c:v libx264 -crf 20 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an cold-loop-16s.mp4
+ffmpeg -y -i warm-loop.mp4 -filter_complex "[0:v]crop=608:1080:$X:0,split[a][b];[b]reverse,trim=start_frame=1,setpts=PTS-STARTPTS[r];[a][r]concat=n=2:v=1:a=0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/warm-loop-16s.mp4
+ffmpeg -y -i cold-loop.mp4 -filter_complex "[0:v]crop=608:1080:$X:0,split[a][b];[a]reverse[r];[b]trim=start_frame=1,setpts=PTS-STARTPTS[f];[r][f]concat=n=2:v=1:a=0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/cold-loop-16s.mp4
+# phone crops of the fog clip, and the reversed fog clips
 ffmpeg -y -i transition.mp4 -vf "crop=608:1080:$X:0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/transition.mp4
 ffmpeg -y -i transition.mp4 -vf "crop=608:1080:$X:0,reverse" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/transition-reverse.mp4
 ffmpeg -y -i transition.mp4 -vf "reverse" -c:v libx264 -crf 22 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an transition-reverse.mp4

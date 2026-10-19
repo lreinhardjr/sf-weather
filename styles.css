@@ -83,10 +83,9 @@ body { overflow-x: hidden; }     /* never allow a sideways scroll (e.g. scrollba
   background: transparent;
 }
 .clip.is-visible { opacity: 1; }
-/* The foggy loop's first frame is lit a touch warmer than the fog clip's last frame,
-   so that one handoff gets a short crossfade instead of a hard cut. */
-.clip--cold { transition: opacity 0.5s linear; }
-.clip.is-top { z-index: 4; transition: opacity 0.4s linear; }   /* above the loops (phone rewind bounce) */
+/* The end of the fog clip dissolves into the foggy loop (the loop's first frame is lit
+   a touch differently), so that one handoff is a 1 s crossfade instead of a hard cut. */
+.clip--cold { transition: opacity 1s linear; }
 .clip.is-dead { display: none; }   /* a clip that failed to load; its poster shows instead */
 
 /* --------------------------------------------------------------------------
@@ -226,7 +225,7 @@ body { overflow-x: hidden; }     /* never allow a sideways scroll (e.g. scrollba
   flex: none;
   color: #0b1118;
 }
-.metric__icon--sun { background: rgba(255, 171, 64, 0.32); color: #7a4200; }
+.metric__icon--sun { background: #d54c20; color: #fff; }   /* the bridge's sunlit orange, sampled from the warm frame */
 .metric__icon--fog { background: rgba(96, 125, 150, 0.26); color: #24384a; }
 
 .metric__label {
@@ -380,6 +379,13 @@ body { overflow-x: hidden; }     /* never allow a sideways scroll (e.g. scrollba
 }
 .pop p:last-child { margin-bottom: 0; }
 .pop strong { font-weight: 700; color: #0b1118; }
+.pop a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pop a:focus-visible { outline: 2px solid rgba(11, 17, 24, 0.6); outline-offset: 2px; border-radius: 3px; }
 .pop__fine {
   padding-top: 8px;
   border-top: 0.5px solid rgba(11, 17, 24, 0.14);

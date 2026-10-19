@@ -36,18 +36,11 @@
   const RIDE_UP_FROM_ABOVE   = 0.75;   // an upward ride may start anywhere below this
   const LEAD_MS = 450;                 // phone mode: quick scroll into / out of the fog band
 
-  /* Rewind bounce at the bottom: after a ride down, the fog briefly rewinds and
-     returns as a hint that the visitor can scroll back up to the sunny side. */
-  const BOUNCE_DELAY_MS = 600;
-  const BOUNCE_MS       = 1400;        // desktop: whole bounce (scroll out and back)
-  const BOUNCE_DEPTH    = 0.78;        // desktop: how far back into the fog band it dips
-  const BOUNCE_HALF_MS  = 700;         // phone: how long the reversed clip plays before returning
-
   /* The fog clip → foggy loop handoff is crossfaded (see .clip--cold in styles.css);
      the fog clip stays visible underneath for this long. */
-  const HANDOFF_FADE_MS = 500;
+  const HANDOFF_FADE_MS = 1000;
 
-  /* Reduced motion: scrub in coarser steps, no rides, no bounce. */
+  /* Reduced motion: scrub in coarser steps, no rides. */
   const REDUCED_MOTION_STEPS = 12;
 
   /* Count-up on load, in milliseconds. */
@@ -116,9 +109,9 @@
   clipWarm.poster  = ASSET_DIR + 'warm-poster.jpg';
   clipTrans.poster = ASSET_DIR + 'warm-poster.jpg';
   clipCold.poster  = ASSET_DIR + 'cold-poster.jpg';
-  clipWarm.src  = ASSET_DIR + 'warm-loop.mp4';
+  clipWarm.src  = ASSET_DIR + 'warm-loop-16s.mp4';   // 8 s Veo loop played forward then back (seamless)
   clipTrans.src = ASSET_DIR + 'transition.mp4';
-  clipCold.src  = ASSET_DIR + 'cold-loop.mp4';
+  clipCold.src  = ASSET_DIR + 'cold-loop-16s.mp4';   // same, starting from the clip's greyer last frame
   if (playbackMode) {
     clipTransRev.poster = ASSET_DIR + 'cold-poster.jpg';
     clipTransRev.preload = 'auto';
@@ -161,7 +154,7 @@
   }
 
   function updateCues() {
-    const busy = autoScrolling || bouncing;
+    const busy = autoScrolling;
     scrollCue.classList.toggle('is-hidden', busy || progress > 0.02);
     scrollCueUp.classList.toggle('is-hidden', busy || progress < 0.98);
   }
@@ -244,7 +237,7 @@
   let scrubPending = false;
 
   function scrub(force) {
-    if (ridePlaying || (bouncing && playbackMode)) return;   // the clip is playing itself
+    if (ridePlaying) return;                  // phone mode: the clip is playing itself
     const v = activeTrans;
     if (dead[keyOf(v)]) return;
     if (!(v.readyState >= 2) || !isFinite(v.duration) || v.duration <= 0) { scrubPending = true; return; }
@@ -272,10 +265,10 @@
       v.addEventListener(ev, () => { scrubPending = true; requestTick(); }));
   });
 
-  /* The fog clip must never play on its own (outside rides / the bounce / the unlock). */
+  /* The fog clip must never play on its own (outside rides / the unlock). */
   let unlockSettled = false;
   [clipTrans, clipTransRev].forEach((v) =>
-    v.addEventListener('play', () => { if (unlockSettled && !ridePlaying && !bouncing) v.pause(); }));
+    v.addEventListener('play', () => { if (unlockSettled && !ridePlaying) v.pause(); }));
 
   /* ------------------------------------------------------------------------
      Mobile Safari unlock: play() + pause() each clip, muted, on the first
@@ -480,6 +473,7 @@
   /* ------------------------------------------------------------------------
      The ride. Down from the top quarter → bottom (fog in). Up from the bottom
      quarter → top (fog out). Works every time, so the scene can be replayed.
+     At the bottom the "scroll up" cue is the nudge back to the sunny side.
      Desktop: an animated scroll, the clip scrubbed along the way; scrolling
      against it cancels. Phone: the clip plays and the scroll follows it.
      ------------------------------------------------------------------------ */
@@ -525,7 +519,6 @@
     const to = dir > 0 ? max : 0;
     if (Math.abs(to - from) < 2) return false;
 
-    cancelBounce();
     autoScrolling = true;
     autoDir = dir;
     updateCues();
@@ -533,10 +526,7 @@
     const clip = dir > 0 ? clipTrans : clipTransRev;
     const canPlay = playbackMode && !dead[keyOf(clip)] && clip.src;
     const run = canPlay ? ridePlayback(dir, from, to, max, clip) : animateScroll(from, to, AUTO_SCROLL_MS, rideCurve);
-    run.then((completed) => {
-      finishRide();
-      if (completed && dir > 0) scheduleBounce();
-    });
+    run.then(() => finishRide());
     return true;
   }
 
@@ -606,94 +596,6 @@
   }
 
   /* ------------------------------------------------------------------------
-     Rewind bounce at the bottom: the fog briefly rolls back and returns, then
-     the "scroll up" cue appears. Any input cancels it.
-     ------------------------------------------------------------------------ */
-
-  let bouncing = false;
-  let bounceTimer = 0;
-  let bounceStop = null;
-
-  function scheduleBounce() {
-    clearTimeout(bounceTimer);
-    bounceTimer = setTimeout(startBounce, BOUNCE_DELAY_MS);
-  }
-
-  function startBounce() {
-    if (autoScrolling || bouncing || reducedMotion || readProgress() < 0.98) return;
-    bouncing = true;
-    updateCues();
-    const run = playbackMode && !dead.transitionRev && clipTransRev.src ? bouncePlayback() : bounceScroll();
-    run.then(() => { bouncing = false; bounceStop = null; requestTick(); });
-  }
-
-  function cancelBounce() {
-    clearTimeout(bounceTimer);
-    if (bounceStop) bounceStop();
-  }
-
-  /* Desktop: scroll out to BOUNCE_DEPTH and back; the scrub does the rest. */
-  function bounceScroll() {
-    return new Promise((resolve) => {
-      const max = maxScroll();
-      const t0 = performance.now();
-      let raf = 0;
-      bounceStop = () => { cancelAnimationFrame(raf); bouncing = false; resolve(); };
-      const frame = (now) => {
-        if (!bouncing) return resolve();
-        const t = clamp((now - t0) / BOUNCE_MS, 0, 1);
-        const prog = 1 - (1 - BOUNCE_DEPTH) * Math.sin(Math.PI * t);
-        window.scrollTo(0, prog * max);
-        requestTick();
-        if (t < 1) raf = requestAnimationFrame(frame); else resolve();
-      };
-      raf = requestAnimationFrame(frame);
-    });
-  }
-
-  /* Phone: play the reversed clip briefly on top of the foggy loop, then the
-     forward clip's last stretch, then hand back to the loop. */
-  function bouncePlayback() {
-    return new Promise((resolve) => {
-      let timer = 0;
-      const cleanup = () => {
-        clearTimeout(timer);
-        [clipTrans, clipTransRev].forEach((v) => {
-          v.removeEventListener('ended', finish);
-          v.classList.remove('is-visible');                 // fades out (see .clip.is-top)
-          try { v.pause(); } catch (e) { /* ignore */ }
-          setTimeout(() => { if (!bouncing) v.classList.remove('is-top'); }, 450);
-        });
-        activeTrans = clipTrans;
-      };
-      const finish = () => { cleanup(); resolve(); };
-      bounceStop = finish;
-
-      /* Part 1: reversed clip from its start (= the end of the fog) for a moment. */
-      clipTransRev.classList.add('is-top', 'is-visible');
-      try { clipTransRev.currentTime = 0; clipTransRev.playbackRate = 1; } catch (e) { /* ignore */ }
-      const p1 = clipTransRev.play();
-      if (p1 && typeof p1.catch === 'function') p1.catch(finish);
-
-      timer = setTimeout(() => {
-        if (!bouncing) return;
-        const played = clipTransRev.currentTime || BOUNCE_HALF_MS / 1000;
-        try { clipTransRev.pause(); } catch (e) { /* ignore */ }
-
-        /* Part 2: forward clip from the matching point to its end. */
-        const d = clipTrans.duration;
-        clipTrans.classList.add('is-top', 'is-visible');
-        clipTrans.addEventListener('ended', finish);
-        try { clipTrans.currentTime = isFinite(d) ? Math.max(0, d - played) : 0; clipTrans.playbackRate = 1; } catch (e) { /* ignore */ }
-        const p2 = clipTrans.play();
-        if (p2 && typeof p2.catch === 'function') p2.catch(finish);
-        clipTransRev.classList.remove('is-top', 'is-visible');
-        timer = setTimeout(finish, 4000);                          // never hang
-      }, BOUNCE_HALF_MS);
-    });
-  }
-
-  /* ------------------------------------------------------------------------
      Input: wheel, touch, keyboard
      ------------------------------------------------------------------------ */
 
@@ -701,7 +603,6 @@
   window.addEventListener('wheel', (e) => {
     const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0;
     if (!dir) return;
-    if (bouncing) { cancelBounce(); }
     if (autoScrolling) {
       if (dir !== autoDir) finishRide();
       else e.preventDefault();
@@ -720,7 +621,6 @@
     const dy = e.touches[0].clientY - touchStartY;
     const dir = dy < -8 ? 1 : dy > 8 ? -1 : 0;
     if (!dir) return;
-    if (bouncing) cancelBounce();
     if (startRide(dir)) e.preventDefault();
   }, { passive: false });
 
@@ -730,7 +630,6 @@
   window.addEventListener('keydown', (e) => {
     const dir = DOWN_KEYS.includes(e.key) ? 1 : UP_KEYS.includes(e.key) ? -1 : 0;
     if (!dir) return;
-    if (bouncing) cancelBounce();
     if (autoScrolling) {
       if (dir !== autoDir) finishRide();
       else e.preventDefault();
