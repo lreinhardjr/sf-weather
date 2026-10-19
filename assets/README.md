@@ -40,7 +40,7 @@ ffmpeg -y -i cold-poster.jpg -vf "crop=608:1080:$X:0" -q:v 3 mobile/cold-poster.
 
 Change `X` to move the portrait crop left or right (0 = left edge, 1312 = right edge).
 
-## Current files (Veo drafts, finalized 2026-10-18)
+## Current files (Veo standard-model renders, finalized 2026-10-18: warm take 3, transition take 4, cold take 3)
 
 1920×1080, 24 fps, 8 s, H.264 High, yuv420p, moov atom at the front (streams immediately),
 every frame a keyframe. About 41–47 MB each (≈130 MB for the three).
