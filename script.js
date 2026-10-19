@@ -110,9 +110,9 @@
   clipWarm.poster  = ASSET_DIR + 'warm-poster.jpg';
   clipTrans.poster = ASSET_DIR + 'warm-poster.jpg';
   clipCold.poster  = ASSET_DIR + 'cold-poster.jpg';
-  clipWarm.src  = ASSET_DIR + 'warm-loop-16s.mp4';   // 8 s Veo loop played forward then back (seamless)
+  clipWarm.src  = ASSET_DIR + 'warm-loop.mp4';       // true loop: Veo was given the same still as first and last frame
   clipTrans.src = ASSET_DIR + 'transition.mp4';
-  clipCold.src  = ASSET_DIR + 'cold-loop-16s.mp4';   // same, starting from the clip's greyer last frame
+  clipCold.src  = ASSET_DIR + 'cold-loop.mp4';       // true loop, starting on the fog clip's final frame
   if (playbackMode) {
     clipTransRev.poster = ASSET_DIR + 'cold-poster.jpg';
     clipTransRev.preload = 'auto';

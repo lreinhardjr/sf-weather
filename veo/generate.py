@@ -324,8 +324,10 @@ def cmd_finalize(args):
     for name, src in mapping.items():
         require(src, "Check the take number.")
         out = ASSETS / name
-        # strip audio, re-encode with frequent keyframes so the site can scrub smoothly
-        ffmpeg("-i", str(src), "-an", "-c:v", "libx264", "-g", "1", "-crf", "18",
+        # strip audio; the scrubbed transition gets a keyframe on every frame (-g 1) so the site
+        # can seek to any frame, the loops only ever play forward so a normal GOP keeps them small
+        gop = "1" if name == "transition.mp4" else "48"
+        ffmpeg("-i", str(src), "-an", "-c:v", "libx264", "-g", gop, "-crf", "18",
                "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out))
         print("wrote", out)
     # posters for the site's fallback

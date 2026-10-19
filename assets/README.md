@@ -5,12 +5,10 @@ replaced with higher-quality re-renders at any time without touching the code.
 
 | File | What it is | Used when |
 |---|---|---|
-| `warm-loop.mp4` | sunny Baker Beach, 8 s Veo master | source for `warm-loop-16s.mp4` |
-| `warm-loop-16s.mp4` | the master played forward then backward: a seamless 16 s loop | top of the page (scroll progress 0 – 0.15) |
+| `warm-loop.mp4` | sunny Baker Beach, true 8 s loop (Veo given the same still as first and last frame) | top of the page (scroll progress 0 – 0.15) |
 | `transition.mp4` | sunny → foggy, scrubbed by scroll (played on phones) | middle (0.15 – 0.85) |
 | `transition-reverse.mp4` | the same clip reversed; phones play it for the ride back up | middle, phones only |
-| `cold-loop.mp4` | foggy Baker Beach, 8 s Veo master | source for `cold-loop-16s.mp4` |
-| `cold-loop-16s.mp4` | the master played backward then forward: seamless 16 s loop that starts on the clip's greyer last frame | bottom (0.85 – 1) |
+| `cold-loop.mp4` | foggy Baker Beach, true 8 s loop that starts on the fog clip's final frame | bottom (0.85 – 1) |
 | `warm-poster.jpg` | still of the sunny scene | before the videos load, or if `warm-loop` / early `transition` fails |
 | `cold-poster.jpg` | still of the foggy scene | before the videos load, or if `cold-loop` / late `transition` fails |
 
@@ -29,16 +27,14 @@ No audio. The phase thresholds (0.15 / 0.85) are constants at the top of `../scr
 | phone in portrait | `assets/mobile/*` — same clips cropped to 9:16 (608×1080, centre-right, x=900) at ~2 MB each |
 
 Regenerate them whenever the three master clips change (free, takes a minute or two).
-The 8 s Veo loops don't actually loop (their last frame doesn't match their first), so
-the site plays 16 s "ping-pong" versions instead: forward then backward, which can never jump.
+The loops were generated as true loops (`generate.py warm --loop` / `cold --loop --first-frame
+keyframes/cold-end.png`), so they repeat without a jump. If a future loop doesn't join up, a
+free fallback is a 16 s "ping-pong" (forward then backward) built with ffmpeg's `reverse` filter.
 
 ```bash
 cd assets && X=900
-# 16 s seamless loops (full size and phone crop)
-ffmpeg -y -i warm-loop.mp4 -filter_complex "[0:v]split[a][b];[b]reverse,trim=start_frame=1,setpts=PTS-STARTPTS[r];[a][r]concat=n=2:v=1:a=0" -c:v libx264 -crf 20 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an warm-loop-16s.mp4
-ffmpeg -y -i cold-loop.mp4 -filter_complex "[0:v]split[a][b];[a]reverse[r];[b]trim=start_frame=1,setpts=PTS-STARTPTS[f];[r][f]concat=n=2:v=1:a=0" -c:v libx264 -crf 20 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an cold-loop-16s.mp4
-ffmpeg -y -i warm-loop.mp4 -filter_complex "[0:v]crop=608:1080:$X:0,split[a][b];[b]reverse,trim=start_frame=1,setpts=PTS-STARTPTS[r];[a][r]concat=n=2:v=1:a=0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/warm-loop-16s.mp4
-ffmpeg -y -i cold-loop.mp4 -filter_complex "[0:v]crop=608:1080:$X:0,split[a][b];[a]reverse[r];[b]trim=start_frame=1,setpts=PTS-STARTPTS[f];[r][f]concat=n=2:v=1:a=0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/cold-loop-16s.mp4
+ffmpeg -y -i warm-loop.mp4  -vf "crop=608:1080:$X:0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/warm-loop.mp4
+ffmpeg -y -i cold-loop.mp4  -vf "crop=608:1080:$X:0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/cold-loop.mp4
 # phone crops of the fog clip, and the reversed fog clips
 ffmpeg -y -i transition.mp4 -vf "crop=608:1080:$X:0" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/transition.mp4
 ffmpeg -y -i transition.mp4 -vf "crop=608:1080:$X:0,reverse" -c:v libx264 -crf 24 -preset medium -g 48 -pix_fmt yuv420p -movflags +faststart -an mobile/transition-reverse.mp4
@@ -49,10 +45,11 @@ ffmpeg -y -i cold-poster.jpg -vf "crop=608:1080:$X:0" -q:v 3 mobile/cold-poster.
 
 Change `X` to move the portrait crop left or right (0 = left edge, 1312 = right edge).
 
-## Current files (Veo standard-model renders, finalized 2026-10-18: warm take 3, transition take 4, cold take 3)
+## Current files (Veo standard-model renders, finalized 2026-10-18: warmloop take 1, transition take 4, coldloop take 1)
 
-1920×1080, 24 fps, 8 s, H.264 High, yuv420p, moov atom at the front (streams immediately),
-every frame a keyframe. About 41–47 MB each (≈130 MB for the three).
+1920×1080, 24 fps, 8 s, H.264 High, yuv420p, moov atom at the front (streams immediately).
+`transition.mp4` has a keyframe on every frame (scrubbing), ~47 MB; the two loops use a normal
+keyframe interval, ~10 MB each.
 
 ## Re-encoding for the web (recommended before publishing)
 
