@@ -28,8 +28,10 @@
   const CARD_SHOW_AT = 0.9;
 
   /* The ride: how long a full top↔bottom auto-scroll takes (desktop scrub mode).
-     In phone play mode the fog clip's own length sets the pace instead. */
-  const AUTO_SCROLL_MS = 9000;
+     In phone play mode the fog clip is played at PHONE_PLAYBACK_RATE instead
+     (the 8 s clip at 2x = 4 s, matching the desktop ride). */
+  const AUTO_SCROLL_MS = 4500;
+  const PHONE_PLAYBACK_RATE = 2;
   const RIDE_DOWN_FROM_BELOW = 0.25;   // a downward ride may start anywhere above this
   const RIDE_UP_FROM_ABOVE   = 0.75;   // an upward ride may start anywhere below this
   const LEAD_MS = 450;                 // phone mode: quick scroll into / out of the fog band
@@ -547,7 +549,7 @@
       ridePlaying = true;
       clip.classList.add('is-visible');
       clip.addEventListener('ended', onEnded);
-      try { clip.currentTime = 0; } catch (e) { /* ignore */ }
+      try { clip.currentTime = 0; clip.playbackRate = PHONE_PLAYBACK_RATE; } catch (e) { /* ignore */ }
       const p = clip.play();
       if (p && typeof p.catch === 'function') p.catch(() => done(true));
 
@@ -651,7 +653,7 @@
 
       /* Part 1: reversed clip from its start (= the end of the fog) for a moment. */
       clipTransRev.classList.add('is-top', 'is-visible');
-      try { clipTransRev.currentTime = 0; } catch (e) { /* ignore */ }
+      try { clipTransRev.currentTime = 0; clipTransRev.playbackRate = 1; } catch (e) { /* ignore */ }
       const p1 = clipTransRev.play();
       if (p1 && typeof p1.catch === 'function') p1.catch(finish);
 
@@ -664,7 +666,7 @@
         const d = clipTrans.duration;
         clipTrans.classList.add('is-top', 'is-visible');
         clipTrans.addEventListener('ended', finish);
-        try { clipTrans.currentTime = isFinite(d) ? Math.max(0, d - played) : 0; } catch (e) { /* ignore */ }
+        try { clipTrans.currentTime = isFinite(d) ? Math.max(0, d - played) : 0; clipTrans.playbackRate = 1; } catch (e) { /* ignore */ }
         const p2 = clipTrans.play();
         if (p2 && typeof p2.catch === 'function') p2.catch(finish);
         clipTransRev.classList.remove('is-top', 'is-visible');
