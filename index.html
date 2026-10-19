@@ -99,6 +99,25 @@
     </section>
   </main>
 
+  <!-- Intro: a bank of drifting fog over the (already playing) sunny scene. The first scroll,
+       tap or key press lifts it. Copy lives right here; edit freely. -->
+  <div class="intro" id="intro" aria-label="Introduction">
+    <div class="intro__layer intro__layer--1"><div class="intro__fog intro__fog--1"></div></div>
+    <div class="intro__layer intro__layer--2"><div class="intro__fog intro__fog--2"></div></div>
+    <div class="intro__layer intro__layer--3"><div class="intro__fog intro__fog--3"></div></div>
+
+    <div class="intro__text">
+      <p class="intro__kicker">San Francisco &middot; <span id="introYear">2026</span></p>
+      <h1 class="intro__title">How often is San Francisco the hottest or coldest city in America?</h1>
+      <p class="intro__sub">Scroll to clear the fog.</p>
+    </div>
+
+    <div class="intro__cue" aria-hidden="true">
+      <span class="intro__cue-text">Scroll to clear the fog</span>
+      <span class="intro__cue-chevron"></span>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>

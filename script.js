@@ -73,6 +73,7 @@
   const coldValue   = document.getElementById('coldValue');
   const hotBar      = document.getElementById('hotBar');
   const coldBar     = document.getElementById('coldBar');
+  const intro       = document.getElementById('intro');
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
@@ -119,6 +120,28 @@
   }
 
   /* ------------------------------------------------------------------------
+     Intro fog: covers the sunny scene until the first scroll, tap or key.
+     ------------------------------------------------------------------------ */
+
+  const INTRO_LIFT_MS = 1900;
+  let introActive = !!intro;
+  if (introActive) document.documentElement.classList.add('intro-active');
+
+  function clearIntro() {
+    if (!introActive) return;
+    introActive = false;
+    document.documentElement.classList.remove('intro-active');
+    intro.classList.add('is-clearing');
+    setTimeout(() => { intro.hidden = true; }, reducedMotion ? 50 : INTRO_LIFT_MS);
+    requestTick();                      // the card and the scroll cue come in
+  }
+
+  if (intro) {
+    intro.addEventListener('pointerdown', clearIntro);
+    intro.addEventListener('click', clearIntro);
+  }
+
+  /* ------------------------------------------------------------------------
      Scroll → progress
      ------------------------------------------------------------------------ */
 
@@ -154,7 +177,7 @@
   }
 
   function updateCues() {
-    const busy = autoScrolling;
+    const busy = autoScrolling || introActive;
     scrollCue.classList.toggle('is-hidden', busy || progress > 0.02);
     scrollCueUp.classList.toggle('is-hidden', busy || progress < 0.98);
   }
@@ -353,7 +376,7 @@
   }
 
   function updateCard() {
-    const want = progress < CARD_HIDE_AT || progress >= CARD_SHOW_AT;
+    const want = !introActive && (progress < CARD_HIDE_AT || progress >= CARD_SHOW_AT);
     if (want === cardVisible) return;
     cardVisible = want;
     glass.classList.toggle('is-hidden', !want);
@@ -376,6 +399,7 @@
     const total = Number.isFinite(+data.totalDays) ? +data.totalDays : DEFAULT_DATA.totalDays;
 
     document.getElementById('year').textContent = String(year);
+    const iy = document.getElementById('introYear'); if (iy) iy.textContent = String(year);
     document.getElementById('totalDays').textContent = total.toLocaleString();
 
     hotValue.dataset.target = String(hot);
@@ -603,6 +627,7 @@
   window.addEventListener('wheel', (e) => {
     const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0;
     if (!dir) return;
+    if (introActive) { clearIntro(); e.preventDefault(); return; }
     if (autoScrolling) {
       if (dir !== autoDir) finishRide();
       else e.preventDefault();
@@ -616,6 +641,7 @@
   let touchStartY = null;
   window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
   window.addEventListener('touchmove', (e) => {
+    if (introActive) { clearIntro(); e.preventDefault(); return; }
     if (autoScrolling) { e.preventDefault(); return; }
     if (touchStartY == null) return;
     const dy = e.touches[0].clientY - touchStartY;
@@ -629,6 +655,7 @@
   const UP_KEYS   = ['ArrowUp', 'PageUp', 'Home'];
   window.addEventListener('keydown', (e) => {
     const dir = DOWN_KEYS.includes(e.key) ? 1 : UP_KEYS.includes(e.key) ? -1 : 0;
+    if (introActive && (dir || e.key === 'Enter')) { clearIntro(); e.preventDefault(); return; }
     if (!dir) return;
     if (autoScrolling) {
       if (dir !== autoDir) finishRide();
