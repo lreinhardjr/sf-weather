@@ -8,7 +8,7 @@ replaced with higher-quality re-renders at any time without touching the code.
 | `warm-loop.mp4` | sunny Baker Beach, true 8 s loop (Veo given the same still as first and last frame) | top of the page (scroll progress 0 – 0.15) |
 | `transition.mp4` | sunny → foggy, scrubbed by scroll (played on phones) | middle (0.15 – 0.85) |
 | `transition-reverse.mp4` | the same clip reversed; phones play it for the ride back up | middle, phones only |
-| `cold-loop.mp4` | foggy Baker Beach, true 8 s loop that starts on the fog clip's final frame | bottom (0.85 – 1) |
+| `cold-loop.mp4` | foggy Baker Beach: currently the previous Veo take (cold_take3) played backward then forward (seamless 16 s) while a clean true-loop take is pending | bottom (0.85 – 1) |
 | `warm-poster.jpg` | still of the sunny scene | before the videos load, or if `warm-loop` / early `transition` fails |
 | `cold-poster.jpg` | still of the foggy scene | before the videos load, or if `cold-loop` / late `transition` fails |
 
@@ -45,7 +45,7 @@ ffmpeg -y -i cold-poster.jpg -vf "crop=608:1080:$X:0" -q:v 3 mobile/cold-poster.
 
 Change `X` to move the portrait crop left or right (0 = left edge, 1312 = right edge).
 
-## Current files (Veo standard-model renders, finalized 2026-10-18: warmloop take 1, transition take 4, coldloop take 1)
+## Current files (Veo standard-model renders, finalized 2026-10-18: warmloop take 1, transition take 4, cold take 3 ping-pong; coldloop take 1 rejected for over-sharpened texture)
 
 1920×1080, 24 fps, 8 s, H.264 High, yuv420p, moov atom at the front (streams immediately).
 `transition.mp4` has a keyframe on every frame (scrubbing), ~47 MB; the two loops use a normal
