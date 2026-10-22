@@ -78,8 +78,9 @@
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
   const touchOnly     = window.matchMedia('(hover: none)').matches || navigator.maxTouchPoints > 0;
 
-  /* Phones and tablets play the fog clip instead of scrubbing it. */
-  const playbackMode = coarsePointer && navigator.maxTouchPoints > 0;
+  /* Phones and tablets play the fog clip instead of scrubbing it.
+     (Append ?play=1 to the address to force this on a desktop for testing.) */
+  const playbackMode = (coarsePointer && navigator.maxTouchPoints > 0) || /[?&]play=1/.test(location.search);
   /* Portrait phones get the tall, lighter encodes. */
   const useMobileAssets = coarsePointer && window.innerWidth < window.innerHeight && window.innerWidth <= MOBILE_MAX_WIDTH;
   const ASSET_DIR = useMobileAssets ? 'assets/mobile/' : 'assets/';
