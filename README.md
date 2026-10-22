@@ -72,6 +72,12 @@ serve.js                                 <- `npm start`: local preview server (R
 assets/README.md                         <- expected asset filenames + ffmpeg encode notes
 ```
 
+### Live site
+
+https://lreinhardjr.github.io/sf-weather/ — served by GitHub Pages from the `main` branch of
+https://github.com/lreinhardjr/sf-weather (public). Every push to `main` redeploys within a
+minute or two, including the daily `data.json` commit from the Action.
+
 ### Preview locally
 
 ```bash
