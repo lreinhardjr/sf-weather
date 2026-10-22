@@ -1,9 +1,9 @@
 {
   "hot": 0,
   "cold": 15,
-  "totalDays": 290,
+  "totalDays": 293,
   "year": 2026,
-  "lastUpdated": "2026-10-17",
+  "lastUpdated": "2026-10-20",
   "hotDates": [],
   "coldDates": [
     "2026-07-03",
@@ -129,7 +129,7 @@
       "runnerUpTemp": 58.5
     }
   ],
-  "lastProcessedDate": "2026-10-17",
+  "lastProcessedDate": "2026-10-20",
   "definition": "hottest = highest daily high, coldest = lowest daily low (overnight), across the cities in data/cities.js.",
   "source": "Open-Meteo (open-meteo.com)"
 }
