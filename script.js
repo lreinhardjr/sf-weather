@@ -139,10 +139,12 @@
       cv.width = cv.height = size;
       const ctx = cv.getContext('2d');
       const img = ctx.createImageData(size, size);
+      /* `size` is small (the noise is drawn at low resolution); it is upscaled with
+         smoothing at the end, which bakes a soft blur into the texture for free. */
       let s = seed >>> 0;
       const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
       const octaves = [];
-      for (let o = 0, cells = 4; o < 4; o++, cells *= 2) {
+      for (let o = 0, cells = 2; o < 3; o++, cells *= 2) {
         const g = new Float32Array(cells * cells);
         for (let i = 0; i < g.length; i++) g[i] = rnd();
         octaves.push({ cells, g });
@@ -168,17 +170,23 @@
         }
       }
       ctx.putImageData(img, 0, 0);
-      return cv.toDataURL('image/png');
+      const big = document.createElement('canvas');
+      big.width = big.height = size * 8;
+      const bctx = big.getContext('2d');
+      bctx.imageSmoothingEnabled = true;
+      bctx.imageSmoothingQuality = 'high';
+      bctx.drawImage(cv, 0, 0, big.width, big.height);
+      return big.toDataURL('image/png');
     } catch (e) { return null; }
   }
 
   if (intro && !reducedMotion) {
     [1, 2, 3].forEach((n, i) => {
       const layer = intro.querySelector('.intro__fog--' + n);
-      const tile = makeFogTile(256, 1234 + n * 977);
+      const tile = makeFogTile(64, 1234 + n * 977);
       if (layer && tile) {
         layer.style.backgroundImage = 'url(' + tile + '), ' + getComputedStyle(layer).backgroundImage;
-        layer.style.backgroundSize = (700 + i * 260) + 'px ' + (700 + i * 260) + 'px, auto, auto, auto';
+        layer.style.backgroundSize = (900 + i * 300) + 'px ' + (900 + i * 300) + 'px, auto, auto, auto';
       }
     });
   }
@@ -749,6 +757,33 @@
   /* Always start at the top (sunny), even on reload. */
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   if (window.scrollY > 0) window.scrollTo(0, 0);
+
+  /* ------------------------------------------------------------------------
+     Diagnostics overlay (?debug=1): a small live readout to screenshot on a
+     phone when something misbehaves. Never shown otherwise.
+     ------------------------------------------------------------------------ */
+
+  if (/[?&]debug=1/.test(location.search)) {
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;margin:0;padding:8px 10px;max-width:calc(100vw - 16px);' +
+      'font:11px/1.35 ui-monospace,Menlo,monospace;color:#fff;background:rgba(0,0,0,.72);border-radius:10px;white-space:pre-wrap;pointer-events:none';
+    document.body.appendChild(box);
+    const errors = [];
+    window.addEventListener('error', (e) => errors.push((e.message || 'error') + ' @' + (e.lineno || '?')));
+    window.addEventListener('unhandledrejection', (e) => errors.push('promise: ' + (e.reason && e.reason.message || e.reason)));
+    const clipLine = (name, v) => `${name}: ready=${v.readyState} ${v.paused ? 'paused' : 'playing'} t=${(v.currentTime || 0).toFixed(1)} ` +
+      `${v.classList.contains('is-visible') ? 'shown' : 'hidden'}${v.error ? ' ERR' + v.error.code : ''}${v.src ? '' : ' nosrc'}`;
+    setInterval(() => {
+      box.textContent = [
+        `mode=${playbackMode ? 'play' : 'scrub'} assets=${ASSET_DIR} ${innerWidth}x${innerHeight} coarse=${coarsePointer} touch=${navigator.maxTouchPoints}`,
+        `phase=${phase} progress=${progress.toFixed(2)} ride=${autoScrolling ? autoDir : 'no'} playing=${ridePlaying} intro=${introActive ? 'up' : (introSettling() ? 'lifting' : 'gone')}`,
+        clipLine('warm', clipWarm), clipLine('fog ', clipTrans), clipLine('rev ', clipTransRev), clipLine('cold', clipCold),
+        `card=${cardVisible ? 'shown' : 'hidden'} metric=${activeMetric} data=${dataLoaded}`,
+        errors.length ? 'errors: ' + errors.slice(-3).join(' | ') : 'errors: none',
+        navigator.userAgent.replace(/Mozilla\/5\.0 /, '').slice(0, 90),
+      ].join('\n');
+    }, 500);
+  }
 
   /* ------------------------------------------------------------------------
      Boot
