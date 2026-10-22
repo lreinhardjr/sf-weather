@@ -36,8 +36,7 @@
   const RIDE_UP_FROM_ABOVE   = 0.75;   // an upward ride may start anywhere below this
   const LEAD_MS = 450;                 // phone mode: quick scroll into / out of the fog band
 
-  /* The fog clip → foggy loop handoff is crossfaded (see .clip--cold in styles.css);
-     the fog clip stays visible underneath for this long. */
+  /* Every clip handoff is a crossfade this long (matches .clip's opacity transition in styles.css). */
   const HANDOFF_FADE_MS = 1000;
 
   /* Reduced motion: scrub in coarser steps, no rides. */
@@ -123,9 +122,62 @@
      Intro fog: covers the sunny scene until the first scroll, tap or key.
      ------------------------------------------------------------------------ */
 
-  const INTRO_LIFT_MS = 1900;
+  const INTRO_LIFT_MS = 4800;          // how long the clearing takes before the overlay is removed
   let introActive = !!intro;
   if (introActive) document.documentElement.classList.add('intro-active');
+
+  /* Cloud texture for the fog layers: a few octaves of smooth value noise drawn once into a
+     small tiling canvas, so the mist has real cloud structure. No image download, no library.
+     If anything fails the CSS gradients alone still read as fog. */
+  function makeFogTile(size, seed) {
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      const ctx = cv.getContext('2d');
+      const img = ctx.createImageData(size, size);
+      let s = seed >>> 0;
+      const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+      const octaves = [];
+      for (let o = 0, cells = 4; o < 4; o++, cells *= 2) {
+        const g = new Float32Array(cells * cells);
+        for (let i = 0; i < g.length; i++) g[i] = rnd();
+        octaves.push({ cells, g });
+      }
+      const smooth = (t) => t * t * (3 - 2 * t);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          let v = 0, amp = 0.55, norm = 0;
+          for (const { cells, g } of octaves) {
+            const fx = (x / size) * cells, fy = (y / size) * cells;
+            const x0 = Math.floor(fx), y0 = Math.floor(fy);
+            const tx = smooth(fx - x0), ty = smooth(fy - y0);
+            const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+            const a = g[y0 * cells + x0], b = g[y0 * cells + x1], c = g[y1 * cells + x0], d = g[y1 * cells + x1];
+            v += amp * ((a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty);
+            norm += amp; amp *= 0.5;
+          }
+          v /= norm;
+          const alpha = Math.max(0, Math.min(1, (v - 0.42) / 0.3));   // only the denser parts are cloud
+          const i = (y * size + x) * 4;
+          img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255;
+          img.data[i + 3] = Math.round(alpha * 235);
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      return cv.toDataURL('image/png');
+    } catch (e) { return null; }
+  }
+
+  if (intro && !reducedMotion) {
+    [1, 2, 3].forEach((n, i) => {
+      const layer = intro.querySelector('.intro__fog--' + n);
+      const tile = makeFogTile(256, 1234 + n * 977);
+      if (layer && tile) {
+        layer.style.backgroundImage = 'url(' + tile + '), ' + getComputedStyle(layer).backgroundImage;
+        layer.style.backgroundSize = (700 + i * 260) + 'px ' + (700 + i * 260) + 'px, auto, auto, auto';
+      }
+    });
+  }
 
   function clearIntro() {
     if (!introActive) return;
@@ -188,34 +240,43 @@
      can become visible before the outgoing one hides.
      ------------------------------------------------------------------------ */
 
+  const STACK = { warm: 0, transition: 1, cold: 2 };   // DOM / z stacking order of the clips
+
   function setPhase(next) {
     const prev = phase;
     phase = next;
 
     const incoming = clipFor(next);
     const outgoing = prev ? clipFor(prev) : null;
+    const incomingOnTop = !prev || STACK[next] > STACK[prev];
+
+    /* Crossfade. If the incoming clip sits above the outgoing one it fades in over it;
+       if it sits below, it appears at once and the outgoing clip fades out to reveal it.
+       Either way the outgoing clip keeps playing until the fade is done. */
+    const handoff = () => {
+      const seq = ++handoffSeq;
+      if (incomingOnTop) {
+        incoming.classList.add('is-visible');
+        setTimeout(() => { if (handoffSeq === seq && phase === next) hideAndPause(outgoing); }, HANDOFF_FADE_MS);
+      } else {
+        incoming.classList.add('no-fade');
+        incoming.classList.add('is-visible');
+        void incoming.offsetWidth;                                   // apply instantly
+        requestAnimationFrame(() => incoming.classList.remove('no-fade'));
+        if (outgoing) outgoing.classList.remove('is-visible');        // fades out
+        setTimeout(() => { if (handoffSeq === seq && phase === next) pauseClip(outgoing); }, HANDOFF_FADE_MS);
+      }
+    };
 
     if (next === PHASE.TRANSITION) {
       scrub(true);
-      incoming.classList.add('is-visible');
-      hideAndPause(outgoing);
+      handoff();
       return;
     }
 
     /* A loop is coming in: rewind to frame 0 so it lines up with the fog clip's end frames. */
     const loop = incoming;
-    const startLoop = () => { loop.classList.add('is-visible'); safePlay(loop); };
-
-    /* The foggy loop fades in over the fog clip's last frame, so keep that clip
-       underneath until the fade is done (unless the phase changes again first). */
-    const hideOutgoing = () => {
-      if (next === PHASE.COLD && outgoing && outgoing !== clipWarm) {
-        const seq = ++handoffSeq;
-        setTimeout(() => { if (handoffSeq === seq && phase === PHASE.COLD) hideAndPause(outgoing); }, HANDOFF_FADE_MS);
-      } else {
-        hideAndPause(outgoing);
-      }
-    };
+    const begin = () => { handoff(); safePlay(loop); };
 
     if (loop.readyState >= 2 && Math.abs(loop.currentTime) > 0.01) {
       let done = false;
@@ -223,19 +284,22 @@
         if (done) return;
         done = true;
         loop.removeEventListener('seeked', finish);
-        startLoop();
-        hideOutgoing();
+        begin();
       };
       loop.addEventListener('seeked', finish, { once: true });
       setTimeout(finish, 150);
       try { loop.currentTime = 0; } catch (e) { finish(); }
     } else {
-      startLoop();
-      hideOutgoing();
+      begin();
     }
   }
 
   let handoffSeq = 0;
+
+  function pauseClip(clip) {
+    if (!clip) return;
+    try { clip.pause(); } catch (e) { /* ignore */ }
+  }
 
   function hideAndPause(clip) {
     if (!clip) return;

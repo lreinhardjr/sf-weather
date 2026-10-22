@@ -75,17 +75,18 @@ body { overflow-x: hidden; }     /* never allow a sideways scroll (e.g. scrollba
 .poster--warm { z-index: 2; }
 .poster.is-visible { opacity: 1; }
 
-/* Videos. Visibility is switched by script.js on a single frame — no crossfade,
-   because the clips share framing and their boundary frames match. */
+/* Videos. Every handoff is a 1 s crossfade done by whichever clip is on top
+   (DOM order: warm < fog clips < cold), so the picture never dips to the
+   background. script.js adds .no-fade when a clip must appear instantly
+   underneath a clip that is fading out. */
 .clip {
   z-index: 3;
   opacity: 0;
   background: transparent;
+  transition: opacity 1s linear;
 }
 .clip.is-visible { opacity: 1; }
-/* The end of the fog clip dissolves into the foggy loop (the loop's first frame is lit
-   a touch differently), so that one handoff is a 1 s crossfade instead of a hard cut. */
-.clip--cold { transition: opacity 1s linear; }
+.clip.no-fade { transition: none; }
 .clip.is-dead { display: none; }   /* a clip that failed to load; its poster shows instead */
 
 /* --------------------------------------------------------------------------
@@ -473,7 +474,10 @@ html.intro-active { overflow: hidden; }   /* no scrolling until the fog has lift
   background: linear-gradient(180deg, rgba(226, 231, 236, 0.72) 0%, rgba(206, 213, 220, 0.6) 100%);
   -webkit-backdrop-filter: blur(18px) saturate(110%);
   backdrop-filter: blur(18px) saturate(110%);
-  transition: opacity 1.6s var(--ease), -webkit-backdrop-filter 1.6s var(--ease), backdrop-filter 1.6s var(--ease);
+  /* The lift: a slow dissipation (see .is-clearing below). */
+  transition: opacity 3.2s cubic-bezier(0.4, 0, 0.6, 1) 0.6s,
+              -webkit-backdrop-filter 3.2s cubic-bezier(0.4, 0, 0.6, 1) 0.4s,
+              backdrop-filter 3.2s cubic-bezier(0.4, 0, 0.6, 1) 0.4s;
 }
 .intro[hidden] { display: none; }
 
@@ -481,13 +485,16 @@ html.intro-active { overflow: hidden; }   /* no scrolling until the fog has lift
 .intro__layer {
   position: absolute;
   inset: 0;
-  transition: transform 1.9s var(--ease), opacity 1.6s var(--ease);
+  transition: transform 4.2s cubic-bezier(0.33, 0, 0.5, 1), opacity 3.4s cubic-bezier(0.5, 0, 0.75, 1), filter 3.4s linear;
 }
 .intro__fog {
   position: absolute;
   inset: -30% -60%;
-  filter: blur(28px);
+  filter: blur(22px);
   will-change: transform;
+  /* script.js adds a generated cloud-noise texture on top of these gradients. */
+  background-size: 900px 900px, auto, auto, auto;
+  background-repeat: repeat;
 }
 .intro__fog--1 {
   background:
@@ -578,16 +585,17 @@ html.intro-active { overflow: hidden; }   /* no scrolling until the fog has lift
   animation: cue-bob 1.9s ease-in-out infinite;
 }
 
-/* The lift: fog drifts up and apart, the words dissolve, the blur clears. */
+/* The lift: like clouds burning off. The words go first, then each fog layer thins,
+   spreads and drifts away on its own schedule, and the blur on the scene clears last. */
 .intro.is-clearing {
   opacity: 0;
   -webkit-backdrop-filter: blur(0) saturate(100%);
   backdrop-filter: blur(0) saturate(100%);
   pointer-events: none;
 }
-.intro.is-clearing .intro__layer--1 { transform: translate3d(-14%, -18%, 0) scale(1.18); opacity: 0; }
-.intro.is-clearing .intro__layer--2 { transform: translate3d(16%, -12%, 0) scale(1.22); opacity: 0; }
-.intro.is-clearing .intro__layer--3 { transform: translate3d(0, -24%, 0) scale(1.3); opacity: 0; }
+.intro.is-clearing .intro__layer--1 { transform: translate3d(-16%, -8%, 0) scale(1.35); opacity: 0; filter: blur(14px); transition-delay: 0s, 0.2s, 0s; }
+.intro.is-clearing .intro__layer--2 { transform: translate3d(14%, -14%, 0) scale(1.4);  opacity: 0; filter: blur(14px); transition-delay: 0.3s, 0.7s, 0.3s; }
+.intro.is-clearing .intro__layer--3 { transform: translate3d(4%, -22%, 0) scale(1.5);   opacity: 0; filter: blur(14px); transition-delay: 0.6s, 1.1s, 0.6s; }
 .intro.is-clearing .intro__text { opacity: 0; transform: translateY(-18px); filter: blur(6px); }
 .intro.is-clearing .intro__cue { opacity: 0; animation: none; }
 
