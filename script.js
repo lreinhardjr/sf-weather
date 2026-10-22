@@ -124,7 +124,10 @@
      ------------------------------------------------------------------------ */
 
   const INTRO_LIFT_MS = 4800;          // how long the clearing takes before the overlay is removed
+  const INTRO_SETTLE_MS = 2600;        // no ride may start this soon after the fog begins to lift
   let introActive = !!intro;
+  let introClearedAt = -Infinity;
+  const introSettling = () => performance.now() - introClearedAt < INTRO_SETTLE_MS;
   if (introActive) document.documentElement.classList.add('intro-active');
 
   /* Cloud texture for the fog layers: a few octaves of smooth value noise drawn once into a
@@ -183,6 +186,7 @@
   function clearIntro() {
     if (!introActive) return;
     introActive = false;
+    introClearedAt = performance.now();
     document.documentElement.classList.remove('intro-active');
     intro.classList.add('is-clearing');
     setTimeout(() => { intro.hidden = true; }, reducedMotion ? 50 : INTRO_LIFT_MS);
@@ -599,7 +603,7 @@
   }
 
   function startRide(dir) {
-    if (autoScrolling || reducedMotion) return false;
+    if (autoScrolling || reducedMotion || introActive || introSettling()) return false;
     const p = readProgress();
     if (dir > 0 && p > RIDE_DOWN_FROM_BELOW) return false;
     if (dir < 0 && p < RIDE_UP_FROM_ABOVE) return false;
@@ -615,7 +619,10 @@
     const clip = dir > 0 ? clipTrans : clipTransRev;
     const canPlay = playbackMode && !dead[keyOf(clip)] && clip.src;
     const run = canPlay ? ridePlayback(dir, from, to, max, clip) : animateScroll(from, to, AUTO_SCROLL_MS, rideCurve);
-    run.then(() => finishRide());
+    run.then((completed) => {
+      if (completed) window.scrollTo(0, dir > 0 ? maxScroll() : 0);
+      finishRide();
+    });
     return true;
   }
 
@@ -629,6 +636,7 @@
     if (!(await animateScroll(from, edgeIn, LEAD_MS, EASE_OUT))) return false;
 
     /* Play the clip from its start; map its time onto the scroll band. */
+    let playFailed = false;
     const ok = await new Promise((resolve) => {
       let finished = false;
       const done = (v) => { if (finished) return; finished = true; cleanup(); resolve(v); };
@@ -647,7 +655,7 @@
       clip.addEventListener('ended', onEnded);
       try { clip.currentTime = 0; clip.playbackRate = PHONE_PLAYBACK_RATE; } catch (e) { /* ignore */ }
       const p = clip.play();
-      if (p && typeof p.catch === 'function') p.catch(() => done(true));
+      if (p && typeof p.catch === 'function') p.catch(() => { playFailed = true; done(false); });
 
       const follow = () => {
         if (finished) return;
@@ -664,7 +672,13 @@
       };
       rideRaf = requestAnimationFrame(follow);
     });
-    if (!ok) return false;
+    if (!ok) {
+      if (!playFailed || !autoScrolling) return false;
+      /* Fallback: scrub the clip along an animated scroll, like the desktop ride. */
+      clip.classList.remove('is-visible');
+      activeTrans = clipTrans;
+      return animateScroll(window.scrollY || 0, to, AUTO_SCROLL_MS, rideCurve);
+    }
 
     return animateScroll(edgeOut, to, LEAD_MS, EASE_OUT);
   }
@@ -693,6 +707,7 @@
     const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0;
     if (!dir) return;
     if (introActive) { clearIntro(); e.preventDefault(); return; }
+    if (introSettling()) { e.preventDefault(); return; }
     if (autoScrolling) {
       if (dir !== autoDir) finishRide();
       else e.preventDefault();
@@ -707,7 +722,7 @@
   window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
   window.addEventListener('touchmove', (e) => {
     if (introActive) { clearIntro(); e.preventDefault(); return; }
-    if (autoScrolling) { e.preventDefault(); return; }
+    if (introSettling() || autoScrolling) { e.preventDefault(); return; }
     if (touchStartY == null) return;
     const dy = e.touches[0].clientY - touchStartY;
     const dir = dy < -8 ? 1 : dy > 8 ? -1 : 0;
@@ -722,6 +737,7 @@
     const dir = DOWN_KEYS.includes(e.key) ? 1 : UP_KEYS.includes(e.key) ? -1 : 0;
     if (introActive && (dir || e.key === 'Enter')) { clearIntro(); e.preventDefault(); return; }
     if (!dir) return;
+    if (introSettling()) { e.preventDefault(); return; }
     if (autoScrolling) {
       if (dir !== autoDir) finishRide();
       else e.preventDefault();
