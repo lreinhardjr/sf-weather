@@ -766,15 +766,26 @@
   if (/[?&]debug=1/.test(location.search)) {
     const box = document.createElement('pre');
     box.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;margin:0;padding:8px 10px;max-width:calc(100vw - 16px);' +
-      'font:11px/1.35 ui-monospace,Menlo,monospace;color:#fff;background:rgba(0,0,0,.72);border-radius:10px;white-space:pre-wrap;pointer-events:none';
+      'font:11px/1.35 ui-monospace,Menlo,monospace;color:#fff;background:rgba(0,0,0,.72);border-radius:10px;white-space:pre-wrap;pointer-events:auto';
     document.body.appendChild(box);
+    let report = '';
+    let copiedUntil = 0;
+    const copy = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const text = 'sf-weather report\n' + report;
+      const done = () => { copiedUntil = performance.now() + 2500; };
+      if (navigator.share) { navigator.share({ title: 'sf-weather report', text }).then(done).catch(() => {}); }
+      else if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done).catch(() => {}); }
+    };
+    box.addEventListener('click', copy);
+    box.addEventListener('touchend', copy);
     const errors = [];
     window.addEventListener('error', (e) => errors.push((e.message || 'error') + ' @' + (e.lineno || '?')));
     window.addEventListener('unhandledrejection', (e) => errors.push('promise: ' + (e.reason && e.reason.message || e.reason)));
     const clipLine = (name, v) => `${name}: ready=${v.readyState} ${v.paused ? 'paused' : 'playing'} t=${(v.currentTime || 0).toFixed(1)} ` +
       `${v.classList.contains('is-visible') ? 'shown' : 'hidden'}${v.error ? ' ERR' + v.error.code : ''}${v.src ? '' : ' nosrc'}`;
     setInterval(() => {
-      box.textContent = [
+      report = [
         `mode=${playbackMode ? 'play' : 'scrub'} assets=${ASSET_DIR} ${innerWidth}x${innerHeight} coarse=${coarsePointer} touch=${navigator.maxTouchPoints}`,
         `phase=${phase} progress=${progress.toFixed(2)} ride=${autoScrolling ? autoDir : 'no'} playing=${ridePlaying} intro=${introActive ? 'up' : (introSettling() ? 'lifting' : 'gone')}`,
         clipLine('warm', clipWarm), clipLine('fog ', clipTrans), clipLine('rev ', clipTransRev), clipLine('cold', clipCold),
@@ -782,6 +793,7 @@
         errors.length ? 'errors: ' + errors.slice(-3).join(' | ') : 'errors: none',
         navigator.userAgent.replace(/Mozilla\/5\.0 /, '').slice(0, 90),
       ].join('\n');
+      box.textContent = (performance.now() < copiedUntil ? '>> copied / shared <<\n' : '>> tap this box to share or copy the report <<\n') + report;
     }, 500);
   }
 
