@@ -23,7 +23,9 @@
       <img class="poster poster--warm" id="posterWarm" alt="" decoding="async">
       <img class="poster poster--cold" id="posterCold" alt="" decoding="async">
 
-      <!-- Phase 1 (progress 0 to WARM_END): sunny loop, playing. -->
+      <!-- The page lands on the foggy loop (bottom of the stacking order is the sunny loop);
+           scrolling down plays the fog clip backwards until the sunny loop takes over. -->
+      <!-- Sunny loop (scene progress 0 to WARM_END = bottom of the page). -->
       <video class="clip clip--warm is-visible" id="clipWarm"
              preload="auto" muted loop playsinline autoplay disablepictureinpicture></video>
 
@@ -34,7 +36,7 @@
       <video class="clip clip--transition" id="clipTransitionRev"
              preload="none" muted playsinline disablepictureinpicture></video>
 
-      <!-- Phase 3 (COLD_START to 1): foggy loop, playing. -->
+      <!-- Foggy loop (scene progress COLD_START to 1 = top of the page, where the visitor lands). -->
       <video class="clip clip--cold" id="clipCold"
              preload="auto" muted loop playsinline disablepictureinpicture></video>
 
@@ -88,12 +90,12 @@
 
       <!-- Scroll nudges: one at the top (fog in), one at the bottom (back to the sun). -->
       <div class="scroll-cue scroll-cue--down" id="scrollCue" aria-hidden="true">
-        <span class="scroll-cue__text">Scroll to watch the fog roll in</span>
+        <span class="scroll-cue__text">Scroll to let the sun in</span>
         <span class="scroll-cue__chevron"></span>
       </div>
       <div class="scroll-cue scroll-cue--up is-hidden" id="scrollCueUp" aria-hidden="true">
         <span class="scroll-cue__chevron scroll-cue__chevron--up"></span>
-        <span class="scroll-cue__text">Scroll up for the sunny side</span>
+        <span class="scroll-cue__text">Scroll up to bring the fog back</span>
       </div>
 
     </section>
@@ -113,7 +115,7 @@
     </div>
 
     <div class="intro__cue" aria-hidden="true">
-      <span class="intro__cue-text">Scroll to clear the fog</span>
+      <span class="intro__cue-text">Scroll to begin</span>
       <span class="intro__cue-chevron"></span>
     </div>
   </div>

@@ -48,6 +48,9 @@
   /* Fallback if data.json can't be fetched, so the card always renders. */
   const DEFAULT_DATA = { hot: 3, cold: 1, totalDays: 138, year: 2026 };
 
+  /* Scroll progress is measured from the SUNNY end: 0 = sunny (bottom of the page),
+     1 = foggy (top of the page, where the visitor lands). See readProgress(). */
+
   /* Portrait touch screens up to this wide get the tall, lighter clips in assets/mobile/. */
   const MOBILE_MAX_WIDTH = 820;
 
@@ -212,11 +215,17 @@
 
   function maxScroll() { return Math.max(0, stage.offsetHeight - window.innerHeight); }
 
-  function readProgress() {
+  /* Raw page position: 0 at the top, 1 at the bottom. */
+  function rawProgress() {
     const max = maxScroll();
     if (max <= 0) return 0;
     return clamp((window.scrollY || window.pageYOffset || 0) / max, 0, 1);
   }
+
+  /* Scene progress runs the other way: the page LANDS on the foggy beach (progress 1)
+     and scrolling down lifts the fog towards the sunny beach (progress 0). */
+  function readProgress() { return 1 - rawProgress(); }
+  const scrollYFor = (p) => (1 - p) * maxScroll();
 
   function requestTick() {
     if (rafPending) return;
@@ -243,8 +252,9 @@
 
   function updateCues() {
     const busy = autoScrolling || introActive;
-    scrollCue.classList.toggle('is-hidden', busy || progress > 0.02);
-    scrollCueUp.classList.toggle('is-hidden', busy || progress < 0.98);
+    const raw = rawProgress();
+    scrollCue.classList.toggle('is-hidden', busy || raw > 0.02);
+    scrollCueUp.classList.toggle('is-hidden', busy || raw < 0.98);
   }
 
   /* ------------------------------------------------------------------------
@@ -262,6 +272,16 @@
     const incoming = clipFor(next);
     const outgoing = prev ? clipFor(prev) : null;
     const incomingOnTop = !prev || STACK[next] > STACK[prev];
+
+    if (!prev) {
+      [clipWarm, clipTrans, clipTransRev, clipCold].forEach((c) => {
+        if (c === incoming) return;
+        c.classList.add('no-fade');
+        c.classList.remove('is-visible');
+        try { c.pause(); } catch (e) { /* ignore */ }
+        requestAnimationFrame(() => c.classList.remove('no-fade'));
+      });
+    }
 
     /* Crossfade. If the incoming clip sits above the outgoing one it fades in over it;
        if it sits below, it appears at once and the outgoing clip fades out to reveal it.
@@ -572,8 +592,8 @@
   }
 
   /* ------------------------------------------------------------------------
-     The ride. Down from the top quarter → bottom (fog in). Up from the bottom
-     quarter → top (fog out). Works every time, so the scene can be replayed.
+     The ride. Down from the top quarter → bottom (fog lifts, sun). Up from the
+     bottom quarter → top (fog returns). Works every time, so it can be replayed.
      At the bottom the "scroll up" cue is the nudge back to the sunny side.
      Desktop: an animated scroll, the clip scrubbed along the way; scrolling
      against it cancels. Phone: the clip plays and the scroll follows it.
@@ -610,11 +630,12 @@
     });
   }
 
+  /* dir is the PAGE direction: +1 scrolling down (fog lifts → sun), -1 scrolling up (fog returns). */
   function startRide(dir) {
     if (autoScrolling || reducedMotion || introActive || introSettling()) return false;
-    const p = readProgress();
-    if (dir > 0 && p > RIDE_DOWN_FROM_BELOW) return false;
-    if (dir < 0 && p < RIDE_UP_FROM_ABOVE) return false;
+    const raw = rawProgress();
+    if (dir > 0 && raw > RIDE_DOWN_FROM_BELOW) return false;
+    if (dir < 0 && raw < RIDE_UP_FROM_ABOVE) return false;
     const max = maxScroll();
     const from = window.scrollY || 0;
     const to = dir > 0 ? max : 0;
@@ -624,7 +645,8 @@
     autoDir = dir;
     updateCues();
 
-    const clip = dir > 0 ? clipTrans : clipTransRev;
+    /* Scrolling down lifts the fog: that is the fog clip played backwards. */
+    const clip = dir > 0 ? clipTransRev : clipTrans;
     const canPlay = playbackMode && !dead[keyOf(clip)] && clip.src;
     const run = canPlay ? ridePlayback(dir, from, to, max, clip) : animateScroll(from, to, AUTO_SCROLL_MS, rideCurve);
     run.then((completed) => {
@@ -637,8 +659,9 @@
   /* Phone mode: lead-in scroll, play the clip while the scroll follows it, lead-out scroll. */
   async function ridePlayback(dir, from, to, max, clip) {
     const band = COLD_START - WARM_END;
-    const edgeIn  = (dir > 0 ? WARM_END : COLD_START) * max;
-    const edgeOut = (dir > 0 ? COLD_START : WARM_END) * max;
+    const fogIn = dir < 0;                       // page up = fog rolling in (forward clip)
+    const edgeIn  = scrollYFor(fogIn ? WARM_END : COLD_START);
+    const edgeOut = scrollYFor(fogIn ? COLD_START : WARM_END);
 
     activeTrans = clip;
     if (!(await animateScroll(from, edgeIn, LEAD_MS, EASE_OUT))) return false;
@@ -671,8 +694,8 @@
         const d = clip.duration;
         if (isFinite(d) && d > 0) {
           const t = clamp(clip.currentTime / d, 0, 1);
-          const prog = dir > 0 ? WARM_END + t * band : COLD_START - t * band;
-          window.scrollTo(0, prog * max);
+          const prog = fogIn ? WARM_END + t * band : COLD_START - t * band;
+          window.scrollTo(0, scrollYFor(prog));
           requestTick();
           if (clip.ended || t >= 0.995) return done(true);
         }
@@ -754,7 +777,7 @@
     if (startRide(dir)) e.preventDefault();
   });
 
-  /* Always start at the top (sunny), even on reload. */
+  /* Always start at the top (the foggy beach), even on reload. */
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   if (window.scrollY > 0) window.scrollTo(0, 0);
 
