@@ -88,6 +88,12 @@ then open http://localhost:8000. (Use this rather than `python3 -m http.server`:
 server doesn't support byte-range requests, so Safari won't play or seek the videos.)
 Scroll-phase thresholds are the two constants at the top of `script.js`.
 
+### Before each push
+
+Run `./bump.sh` first. It stamps the stylesheet and script references in `index.html` with the
+current time so phones and browsers fetch fresh copies right away (GitHub Pages otherwise lets
+them keep the old files for ten minutes).
+
 ### Data pipeline
 
 The panel's numbers come from `data.json`, which counts the days this year on which
