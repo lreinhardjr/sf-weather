@@ -386,6 +386,9 @@
     const incomingOnTop = !prev || STACK[next] > STACK[prev];
 
     if (!prev) {
+      /* First paint: the landing clip appears at once, everything else is hidden at once. */
+      incoming.classList.add('no-fade');
+      requestAnimationFrame(() => incoming.classList.remove('no-fade'));
       [clipWarm, clipTrans, clipTransRev, clipCold].forEach((c) => {
         if (c === incoming) return;
         c.classList.add('no-fade');

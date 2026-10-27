@@ -49,7 +49,7 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   width: 100%;
   height: 100vh;       /* the LARGEST viewport on phones, so no strip shows when Safari's bars shrink */
   overflow: hidden;
-  background: var(--warm-sky);
+  background: var(--cold-sky);   /* placeholder behind the clips: the foggy sky, where the page lands */
 }
 
 /* Fallback for the rare browser without sticky support. */
