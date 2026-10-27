@@ -66,6 +66,9 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   object-fit: cover;        /* cover-crop; the 16:9 clips centre at any aspect ratio */
   object-position: center;
   pointer-events: none;
+  /* The generated clips carry a 4-pixel black border on their top and bottom edges;
+     a 1.5% zoom keeps those rows just off screen at every aspect ratio. */
+  transform: scale(1.015);
 }
 
 /* Posters sit under the videos. Warm on top of cold so the page starts sunny. */
