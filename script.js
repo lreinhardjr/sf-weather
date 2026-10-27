@@ -348,6 +348,7 @@
 
   function tick() {
     rafPending = false;
+    if (typeof lastVh === 'number' && window.innerHeight !== lastVh) { onViewportChange(); return; }
     progress = readProgress();
 
     let next;
@@ -928,16 +929,24 @@
   /* Keep the scene exactly one real screen tall. Phone browsers change the viewport
      height when their toolbars collapse or return; when that happens, re-pin the page
      so the scene stays where it was. */
+  let lastVh = 0;
   function syncViewport() {
-    document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
+    const h = window.innerHeight;
+    if (h === lastVh) return false;
+    lastVh = h;
+    document.documentElement.style.setProperty('--vh', h + 'px');
+    return true;
   }
   syncViewport();
-  window.addEventListener('resize', () => {
+  function onViewportChange() {
     const p = progress;
-    syncViewport();
+    if (!syncViewport()) return;
     if (!autoScrolling) window.scrollTo(0, scrollYFor(p));
     requestTick();
-  });
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', onViewportChange);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onViewportChange);
 
   /* Always start at the top (the foggy beach), even on reload. */
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
