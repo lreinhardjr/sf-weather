@@ -14,8 +14,11 @@
   --spec-y: 40%;
   --spec-opacity: 0;
 
-  /* Scroll container height. 300vh = the transition gets ~2 screens of scrolling. */
-  --stage-height: 300vh;
+  /* The viewport height as actually shown right now; script.js keeps --vh current
+     (phone browsers grow and shrink it as their toolbars come and go). */
+  --vh: 100vh;
+  /* Scroll container height: three screens, so the fog gets ~2 screens of scrolling. */
+  --stage-height: calc(var(--vh) * 3);
 }
 
 * { box-sizing: border-box; }
@@ -47,8 +50,7 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   position: sticky;
   top: 0;
   width: 100%;
-  height: 100vh;
-  height: 100svh;      /* the viewport as actually shown; Safari's bars never collapse during the ride */
+  height: var(--vh);   /* always the viewport as actually shown (see --vh) */
   overflow: hidden;
   background: var(--cold-sky);   /* placeholder behind the clips: the foggy sky, where the page lands */
 }

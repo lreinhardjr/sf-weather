@@ -925,6 +925,20 @@
     if (startRide(dir)) e.preventDefault();
   });
 
+  /* Keep the scene exactly one real screen tall. Phone browsers change the viewport
+     height when their toolbars collapse or return; when that happens, re-pin the page
+     so the scene stays where it was. */
+  function syncViewport() {
+    document.documentElement.style.setProperty('--vh', window.innerHeight + 'px');
+  }
+  syncViewport();
+  window.addEventListener('resize', () => {
+    const p = progress;
+    syncViewport();
+    if (!autoScrolling) window.scrollTo(0, scrollYFor(p));
+    requestTick();
+  });
+
   /* Always start at the top (the foggy beach), even on reload. */
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   if (window.scrollY > 0) window.scrollTo(0, 0);
