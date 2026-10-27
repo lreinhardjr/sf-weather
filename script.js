@@ -28,13 +28,54 @@
   const CARD_SHOW_AT = 0.9;
 
   /* The ride: how long a full top↔bottom auto-scroll takes (desktop scrub mode).
-     In phone play mode the fog clip is played at PHONE_PLAYBACK_RATE instead
-     (the 8 s clip at 2x = 4 s, matching the desktop ride). */
-  const AUTO_SCROLL_MS = 2250;
-  const PHONE_PLAYBACK_RATE = 4;       // browsers that cap the rate just ride a little slower
+     In phone play mode the fog clip is played instead, following the same speed
+     profile (RIDE_FAST, ramping down to normal speed at the end). */
+  const AUTO_SCROLL_MS = 2250;         // used only as a last-resort fallback
+  /* The fog clip runs at RIDE_FAST× speed, then from RIDE_RAMP_FROM of the way through it
+     ramps down steadily to normal speed by its last frame, so each ride settles into the
+     loop at the clip's natural pace (both directions). Desktop scrubbing follows the same
+     speed profile. */
+  const RIDE_FAST = 4;
+  const RIDE_RAMP_FROM = 0.45;
+  const RIDE_END_RATE = 1;
+  const CLIP_SECONDS = 8;
+  function rideRate(u) {               // playback rate at clip progress u (0…1)
+    if (u <= RIDE_RAMP_FROM) return RIDE_FAST;
+    return RIDE_FAST - (RIDE_FAST - RIDE_END_RATE) * (u - RIDE_RAMP_FROM) / (1 - RIDE_RAMP_FROM);
+  }
+  /* Time → clip progress table for the scrubbed (desktop) ride. */
+  const RIDE_TABLE = (() => {
+    const steps = 480, times = new Float32Array(steps + 1);
+    let t = 0;
+    for (let i = 1; i <= steps; i++) {
+      const u = (i - 0.5) / steps;
+      t += (CLIP_SECONDS / steps) / rideRate(u);
+      times[i] = t;
+    }
+    return { times, total: t, steps };
+  })();
+  function rideProgressAt(elapsedSec) {
+    const { times, total, steps } = RIDE_TABLE;
+    if (elapsedSec >= total) return 1;
+    let lo = 0, hi = steps;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (times[mid] < elapsedSec) lo = mid + 1; else hi = mid; }
+    const i = Math.max(1, lo);
+    const f = (elapsedSec - times[i - 1]) / (times[i] - times[i - 1] || 1);
+    return clamp((i - 1 + f) / steps, 0, 1);
+  }
   const RIDE_DOWN_FROM_BELOW = 0.25;   // a downward ride may start anywhere above this
   const RIDE_UP_FROM_ABOVE   = 0.75;   // an upward ride may start anywhere below this
   const LEAD_MS = 450;                 // phone mode: quick scroll into / out of the fog band
+
+  /* Colour Safari paints its top/bottom bars with: the sky at the top of whatever is showing. */
+  const THEME_COLORS = { intro: '#e9edf1', warm: '#6b93ff', cold: '#a6b7cb' };
+  const themeMeta = document.getElementById('themeColor');
+  function updateThemeColor() {
+    if (!themeMeta) return;
+    const key = introActive ? 'intro' : (progress < METRIC_SWAP ? 'warm' : 'cold');
+    const c = THEME_COLORS[key];
+    if (themeMeta.getAttribute('content') !== c) themeMeta.setAttribute('content', c);
+  }
 
   /* Every clip handoff is a crossfade this long (matches .clip's opacity transition in styles.css). */
   const HANDOFF_FADE_MS = 1000;
@@ -147,7 +188,7 @@
     let s = seed >>> 0;
     const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
     const octaves = [];
-    for (let o = 0, cells = 3; o < 4; o++, cells *= 2) {
+    for (let o = 0, cells = 2; o < 5; o++, cells *= 2) {
       const g = new Float32Array(cells * cells);
       for (let i = 0; i < g.length; i++) g[i] = rnd();
       octaves.push({ cells, g });
@@ -197,7 +238,9 @@
 
     let w = 0, h = 0, img = null;
     const resize = () => {
-      const scale = Math.max(1, Math.min(6, Math.round(window.innerWidth / 150)));
+      /* Enough pixels for cloud detail, few enough for phones: about 60k per frame. */
+      let scale = 2;
+      while ((window.innerWidth / scale) * (window.innerHeight / scale) > 60000) scale += 1;
       w = Math.max(60, Math.round(window.innerWidth / scale));
       h = Math.max(60, Math.round(window.innerHeight / scale));
       fogCanvas.width = w; fogCanvas.height = h;
@@ -216,26 +259,31 @@
       let lift = 0;
       if (liftAt) lift = ease(clamp((now - liftAt) / FOG_EVAPORATE_MS, 0, 1));
 
-      /* Density cutoff rises as the fog lifts; the band above it stays soft. */
-      const cut = 0.14 + lift * 1.08;
-      const soft = 0.34 + lift * 0.22;
+      /* Density cutoff rises as the fog lifts: thin haze goes first, thick puffs last. */
+      const cut = 0.03 + lift * 1.1;
+      const soft = 0.36 + lift * 0.2;
       const rise = lift * lift * 40;                 // wisps drift upward as they go
       const k = N / Math.max(w, h);                  // noise cells per canvas pixel
       const data = img.data;
+      const ss = (e0, e1, v) => { const q = (v - e0) / (e1 - e0); return q <= 0 ? 0 : q >= 1 ? 1 : q * q * (3 - 2 * q); };
       let i = 0;
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
-          const nx = x * k * 0.75, ny = (y + rise) * k * 1.15;
-          const d1 = sample(A, nx + t * 2.2, ny + t * 0.6);
-          const d2 = sample(B, nx * 2.1 - t * 1.4, ny * 2.1 + t * 0.9);
-          const d = d1 * 0.72 + d2 * 0.28;
-          let a = (d - cut) / soft;
-          a = a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a);
-          const thick = a * a;
-          data[i++] = 252 - 6 * thick;
-          data[i++] = 253 - 4 * thick;
-          data[i++] = 255;
-          data[i++] = Math.round(a * 255 * (1 - lift * 0.1));
+          const nx = x * k * 0.8, ny = (y + rise) * k * 1.2;
+          const ax = nx + t * 2.0, ay = ny + t * 0.5;
+          const d1 = sample(A, ax, ay);
+          const d2 = sample(B, nx * 2.3 - t * 1.3, ny * 2.3 + t * 0.8);
+          const d = d1 * 0.7 + d2 * 0.3;
+          /* Cloud shading: compare with the density a little higher up. Where the cloud
+             above is denser, this pixel is on an underside and sits in shadow. */
+          const dUp = sample(A, ax, ay - 1.6) * 0.7 + d2 * 0.3;
+          const shade = ss(0, 0.22, dUp - d);
+          let L = 0.84 + 0.16 * ss(0.3, 0.8, d) - 0.17 * shade;
+          const a = ss(cut, cut + soft, d);
+          data[i++] = Math.round(L * 246);
+          data[i++] = Math.round(L * 249);
+          data[i++] = Math.round(L * 255);
+          data[i++] = Math.round(a * 255 * (1 - lift * 0.08));
         }
       }
       ctx.putImageData(img, 0, 0);
@@ -307,6 +355,7 @@
     updateMetric();
     updateCard();
     updateCues();
+    updateThemeColor();
   }
 
   function updateCues() {
@@ -708,12 +757,35 @@
     /* Scrolling down lifts the fog: that is the fog clip played backwards. */
     const clip = dir > 0 ? clipTransRev : clipTrans;
     const canPlay = playbackMode && !dead[keyOf(clip)] && clip.src;
-    const run = canPlay ? ridePlayback(dir, from, to, max, clip) : animateScroll(from, to, AUTO_SCROLL_MS, rideCurve);
+    const run = canPlay ? ridePlayback(dir, from, to, max, clip) : rideScrub(dir, from, to);
     run.then((completed) => {
       if (completed) window.scrollTo(0, dir > 0 ? maxScroll() : 0);
       finishRide();
     });
     return true;
+  }
+
+  /* Desktop mode: lead-in scroll, scrub the fog band along the speed profile, lead-out scroll. */
+  async function rideScrub(dir, from, to) {
+    const band = COLD_START - WARM_END;
+    const fogIn = dir < 0;
+    const edgeIn  = scrollYFor(fogIn ? WARM_END : COLD_START);
+    const edgeOut = scrollYFor(fogIn ? COLD_START : WARM_END);
+    if (!(await animateScroll(from, edgeIn, LEAD_MS, EASE_OUT))) return false;
+    const ok = await new Promise((resolve) => {
+      const t0 = performance.now();
+      const frame = (now) => {
+        if (!autoScrolling) return resolve(false);
+        const u = rideProgressAt((now - t0) / 1000);
+        const prog = fogIn ? WARM_END + u * band : COLD_START - u * band;
+        window.scrollTo(0, scrollYFor(prog));
+        requestTick();
+        if (u < 1) rideRaf = requestAnimationFrame(frame); else resolve(true);
+      };
+      rideRaf = requestAnimationFrame(frame);
+    });
+    if (!ok) return false;
+    return animateScroll(edgeOut, to, LEAD_MS, EASE_OUT);
   }
 
   /* Phone mode: lead-in scroll, play the clip while the scroll follows it, lead-out scroll. */
@@ -744,7 +816,7 @@
       ridePlaying = true;
       clip.classList.add('is-visible');
       clip.addEventListener('ended', onEnded);
-      try { clip.currentTime = 0; clip.playbackRate = PHONE_PLAYBACK_RATE; } catch (e) { /* ignore */ }
+      try { clip.currentTime = 0; clip.playbackRate = RIDE_FAST; } catch (e) { /* ignore */ }
       const p = clip.play();
       if (p && typeof p.catch === 'function') p.catch(() => { playFailed = true; done(false); });
 
@@ -754,6 +826,8 @@
         const d = clip.duration;
         if (isFinite(d) && d > 0) {
           const t = clamp(clip.currentTime / d, 0, 1);
+          const want = rideRate(t);
+          if (Math.abs(clip.playbackRate - want) > 0.05) { try { clip.playbackRate = want; } catch (e) { /* ignore */ } }
           const prog = fogIn ? WARM_END + t * band : COLD_START - t * band;
           window.scrollTo(0, scrollYFor(prog));
           requestTick();
@@ -768,7 +842,7 @@
       /* Fallback: scrub the clip along an animated scroll, like the desktop ride. */
       clip.classList.remove('is-visible');
       activeTrans = clipTrans;
-      return animateScroll(window.scrollY || 0, to, AUTO_SCROLL_MS, rideCurve);
+      return rideScrub(dir, window.scrollY || 0, to);
     }
 
     return animateScroll(edgeOut, to, LEAD_MS, EASE_OUT);

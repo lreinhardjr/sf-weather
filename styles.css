@@ -6,8 +6,8 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Placeholder scene colours, used only until posters/videos paint. */
-  --warm-sky: #a9c9e6;
-  --cold-sky: #8d969d;
+  --warm-sky: #6b93ff;   /* top of the sunny clip */
+  --cold-sky: #a6b7cb;   /* top of the foggy clip */
 
   /* Specular highlight position on the glass panel; updated by script.js on mousemove. */
   --spec-x: 50%;
