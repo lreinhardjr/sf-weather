@@ -470,15 +470,15 @@ html.intro-active { overflow: hidden; }   /* no scrolling until the fog has lift
   inset: 0;
   z-index: 20;
   overflow: hidden;
-  background-color: rgba(222, 228, 234, 0.42);
+  background-color: rgba(226, 231, 236, 0.6);
   -webkit-backdrop-filter: blur(14px) saturate(110%);
   backdrop-filter: blur(14px) saturate(110%);
   /* The lift: the canvas fog evaporates on its own (script.js); the tint and the blur
      on the scene behind clear over the same few seconds, the overlay itself only at the end. */
-  transition: opacity 1.3s linear 3.3s,
-              background-color 3s linear 0.6s,
-              -webkit-backdrop-filter 3.4s cubic-bezier(0.4, 0, 0.6, 1) 0.6s,
-              backdrop-filter 3.4s cubic-bezier(0.4, 0, 0.6, 1) 0.6s;
+  transition: opacity 0.7s linear 1.6s,
+              background-color 1.5s linear 0.3s,
+              -webkit-backdrop-filter 1.7s cubic-bezier(0.4, 0, 0.6, 1) 0.3s,
+              backdrop-filter 1.7s cubic-bezier(0.4, 0, 0.6, 1) 0.3s;
 }
 .intro[hidden] { display: none; }
 
@@ -502,7 +502,7 @@ html.intro-active { overflow: hidden; }   /* no scrolling until the fog has lift
   padding: 24px;
   color: #17222c;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
-  transition: opacity 1s var(--ease), transform 1.4s var(--ease), filter 1s var(--ease);
+  transition: opacity 0.6s var(--ease), transform 0.9s var(--ease), filter 0.6s var(--ease);
 }
 .intro__kicker {
   margin: 0 0 18px;

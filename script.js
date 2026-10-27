@@ -167,8 +167,8 @@
      Intro fog: covers the sunny scene until the first scroll, tap or key.
      ------------------------------------------------------------------------ */
 
-  const INTRO_LIFT_MS = 4800;          // how long the clearing takes before the overlay is removed
-  const INTRO_SETTLE_MS = 2600;        // no ride may start this soon after the fog begins to lift
+  const INTRO_LIFT_MS = 2400;          // how long the clearing takes before the overlay is removed
+  const INTRO_SETTLE_MS = 1400;        // no ride may start this soon after the fog begins to lift
   let introActive = !!intro;
   let introClearedAt = -Infinity;
   const introSettling = () => performance.now() - introClearedAt < INTRO_SETTLE_MS;
@@ -181,7 +181,7 @@
      wisps burn off first, holes open up, and the last thick patches shrink and vanish.
      No image download, no library. */
 
-  const FOG_EVAPORATE_MS = 4200;
+  const FOG_EVAPORATE_MS = 2100;
   const fogCanvas = document.getElementById('introFog');
 
   function makeNoiseField(size, seed) {
@@ -259,9 +259,11 @@
       let lift = 0;
       if (liftAt) lift = ease(clamp((now - liftAt) / FOG_EVAPORATE_MS, 0, 1));
 
-      /* Density cutoff rises as the fog lifts: thin haze goes first, thick puffs last. */
+      /* Density cutoff rises as the fog lifts: thin haze goes first, thick puffs last.
+         A haze floor keeps everything veiled until the fog is well on its way out. */
       const cut = 0.03 + lift * 1.1;
       const soft = 0.36 + lift * 0.2;
+      const haze = 0.62 * Math.pow(1 - lift, 1.6);
       const rise = lift * lift * 40;                 // wisps drift upward as they go
       const k = N / Math.max(w, h);                  // noise cells per canvas pixel
       const data = img.data;
@@ -273,13 +275,15 @@
           const ax = nx + t * 2.0, ay = ny + t * 0.5;
           const d1 = sample(A, ax, ay);
           const d2 = sample(B, nx * 2.3 - t * 1.3, ny * 2.3 + t * 0.8);
-          const d = d1 * 0.7 + d2 * 0.3;
+          /* A second, wispier layer: long horizontal streaks of mist sliding past slowly. */
+          const wisp = sample(B, nx * 0.45 + t * 0.9, ny * 2.8 - t * 0.25);
+          const d = d1 * 0.6 + d2 * 0.22 + wisp * 0.18;
           /* Cloud shading: compare with the density a little higher up. Where the cloud
              above is denser, this pixel is on an underside and sits in shadow. */
           const dUp = sample(A, ax, ay - 1.6) * 0.7 + d2 * 0.3;
           const shade = ss(0, 0.22, dUp - d);
-          let L = 0.84 + 0.16 * ss(0.3, 0.8, d) - 0.17 * shade;
-          const a = ss(cut, cut + soft, d);
+          let L = 0.86 + 0.14 * ss(0.3, 0.8, d) - 0.13 * shade;
+          const a = haze + (1 - haze) * ss(cut, cut + soft, d);
           data[i++] = Math.round(L * 246);
           data[i++] = Math.round(L * 249);
           data[i++] = Math.round(L * 255);
