@@ -133,66 +133,124 @@
   const introSettling = () => performance.now() - introClearedAt < INTRO_SETTLE_MS;
   if (introActive) document.documentElement.classList.add('intro-active');
 
-  /* Cloud texture for the fog layers: a few octaves of smooth value noise drawn once into a
-     small tiling canvas, so the mist has real cloud structure. No image download, no library.
-     If anything fails the CSS gradients alone still read as fog. */
-  function makeFogTile(size, seed) {
-    try {
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = size;
-      const ctx = cv.getContext('2d');
-      const img = ctx.createImageData(size, size);
-      /* `size` is small (the noise is drawn at low resolution); it is upscaled with
-         smoothing at the end, which bakes a soft blur into the texture for free. */
-      let s = seed >>> 0;
-      const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-      const octaves = [];
-      for (let o = 0, cells = 2; o < 3; o++, cells *= 2) {
-        const g = new Float32Array(cells * cells);
-        for (let i = 0; i < g.length; i++) g[i] = rnd();
-        octaves.push({ cells, g });
+  /* Live fog on a small canvas. A few octaves of smooth, tiling value noise give the
+     cloud structure; each frame the canvas is redrawn at low resolution (cheap enough
+     for phones) and stretched to the screen. While the intro is up the fog drifts
+     slowly. When it lifts, a density cutoff rises over a few seconds: the thinnest
+     wisps burn off first, holes open up, and the last thick patches shrink and vanish.
+     No image download, no library. */
+
+  const FOG_EVAPORATE_MS = 4200;
+  const fogCanvas = document.getElementById('introFog');
+
+  function makeNoiseField(size, seed) {
+    let s = seed >>> 0;
+    const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+    const octaves = [];
+    for (let o = 0, cells = 3; o < 4; o++, cells *= 2) {
+      const g = new Float32Array(cells * cells);
+      for (let i = 0; i < g.length; i++) g[i] = rnd();
+      octaves.push({ cells, g });
+    }
+    const smooth = (t) => t * t * (3 - 2 * t);
+    const field = new Float32Array(size * size);
+    let lo = 1, hi = 0;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let v = 0, amp = 0.55, norm = 0;
+        for (const { cells, g } of octaves) {
+          const fx = (x / size) * cells, fy = (y / size) * cells;
+          const x0 = Math.floor(fx), y0 = Math.floor(fy);
+          const tx = smooth(fx - x0), ty = smooth(fy - y0);
+          const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+          const a = g[y0 * cells + x0], b = g[y0 * cells + x1], c = g[y1 * cells + x0], d = g[y1 * cells + x1];
+          v += amp * ((a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty);
+          norm += amp; amp *= 0.5;
+        }
+        v /= norm;
+        field[y * size + x] = v;
+        if (v < lo) lo = v; if (v > hi) hi = v;
       }
-      const smooth = (t) => t * t * (3 - 2 * t);
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          let v = 0, amp = 0.55, norm = 0;
-          for (const { cells, g } of octaves) {
-            const fx = (x / size) * cells, fy = (y / size) * cells;
-            const x0 = Math.floor(fx), y0 = Math.floor(fy);
-            const tx = smooth(fx - x0), ty = smooth(fy - y0);
-            const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
-            const a = g[y0 * cells + x0], b = g[y0 * cells + x1], c = g[y1 * cells + x0], d = g[y1 * cells + x1];
-            v += amp * ((a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty);
-            norm += amp; amp *= 0.5;
-          }
-          v /= norm;
-          const alpha = Math.max(0, Math.min(1, (v - 0.42) / 0.3));   // only the denser parts are cloud
-          const i = (y * size + x) * 4;
-          img.data[i] = 255; img.data[i + 1] = 255; img.data[i + 2] = 255;
-          img.data[i + 3] = Math.round(alpha * 235);
+    }
+    for (let i = 0; i < field.length; i++) field[i] = (field[i] - lo) / (hi - lo);   // stretch to 0…1
+    return { size, field };
+  }
+
+  function startFog() {
+    if (!fogCanvas || !intro) return;
+    let ctx;
+    try { ctx = fogCanvas.getContext('2d'); } catch (e) { return; }
+    if (!ctx) return;
+
+    const N = 128;
+    const A = makeNoiseField(N, 1234);
+    const B = makeNoiseField(N, 9876);
+    const sample = (f, x, y) => {                 // bilinear, tiling
+      const xi = Math.floor(x), yi = Math.floor(y);
+      const tx = x - xi, ty = y - yi;
+      const x0 = ((xi % N) + N) % N, y0 = ((yi % N) + N) % N;
+      const x1 = (x0 + 1) % N, y1 = (y0 + 1) % N;
+      const r0 = f.field[y0 * N + x0] * (1 - tx) + f.field[y0 * N + x1] * tx;
+      const r1 = f.field[y1 * N + x0] * (1 - tx) + f.field[y1 * N + x1] * tx;
+      return r0 * (1 - ty) + r1 * ty;
+    };
+
+    let w = 0, h = 0, img = null;
+    const resize = () => {
+      const scale = Math.max(1, Math.min(6, Math.round(window.innerWidth / 150)));
+      w = Math.max(60, Math.round(window.innerWidth / scale));
+      h = Math.max(60, Math.round(window.innerHeight / scale));
+      fogCanvas.width = w; fogCanvas.height = h;
+      img = ctx.createImageData(w, h);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const t0 = performance.now();
+    let liftAt = 0;
+    let raf = 0;
+    const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+    const frame = (now) => {
+      const t = (now - t0) / 1000;
+      let lift = 0;
+      if (liftAt) lift = ease(clamp((now - liftAt) / FOG_EVAPORATE_MS, 0, 1));
+
+      /* Density cutoff rises as the fog lifts; the band above it stays soft. */
+      const cut = 0.14 + lift * 1.08;
+      const soft = 0.34 + lift * 0.22;
+      const rise = lift * lift * 40;                 // wisps drift upward as they go
+      const k = N / Math.max(w, h);                  // noise cells per canvas pixel
+      const data = img.data;
+      let i = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const nx = x * k * 0.75, ny = (y + rise) * k * 1.15;
+          const d1 = sample(A, nx + t * 2.2, ny + t * 0.6);
+          const d2 = sample(B, nx * 2.1 - t * 1.4, ny * 2.1 + t * 0.9);
+          const d = d1 * 0.72 + d2 * 0.28;
+          let a = (d - cut) / soft;
+          a = a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a);
+          const thick = a * a;
+          data[i++] = 252 - 6 * thick;
+          data[i++] = 253 - 4 * thick;
+          data[i++] = 255;
+          data[i++] = Math.round(a * 255 * (1 - lift * 0.1));
         }
       }
       ctx.putImageData(img, 0, 0);
-      const big = document.createElement('canvas');
-      big.width = big.height = size * 8;
-      const bctx = big.getContext('2d');
-      bctx.imageSmoothingEnabled = true;
-      bctx.imageSmoothingQuality = 'high';
-      bctx.drawImage(cv, 0, 0, big.width, big.height);
-      return big.toDataURL('image/png');
-    } catch (e) { return null; }
+      if (!(liftAt && lift >= 1) && !intro.hidden) raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+
+    return {
+      lift() { if (!liftAt) liftAt = performance.now(); },
+      stop() { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); },
+    };
   }
 
-  if (intro && !reducedMotion) {
-    [1, 2, 3].forEach((n, i) => {
-      const layer = intro.querySelector('.intro__fog--' + n);
-      const tile = makeFogTile(64, 1234 + n * 977);
-      if (layer && tile) {
-        layer.style.backgroundImage = 'url(' + tile + '), ' + getComputedStyle(layer).backgroundImage;
-        layer.style.backgroundSize = (900 + i * 300) + 'px ' + (900 + i * 300) + 'px, auto, auto, auto';
-      }
-    });
-  }
+  const fog = (intro && !reducedMotion) ? startFog() : null;
+  if (intro && reducedMotion && fogCanvas) fogCanvas.style.background = 'rgba(236, 240, 244, 0.9)';
 
   function clearIntro() {
     if (!introActive) return;
@@ -200,7 +258,8 @@
     introClearedAt = performance.now();
     document.documentElement.classList.remove('intro-active');
     intro.classList.add('is-clearing');
-    setTimeout(() => { intro.hidden = true; }, reducedMotion ? 50 : INTRO_LIFT_MS);
+    if (fog) fog.lift();
+    setTimeout(() => { intro.hidden = true; if (fog) fog.stop(); }, reducedMotion ? 50 : INTRO_LIFT_MS);
     requestTick();                      // the card and the scroll cue come in
   }
 
