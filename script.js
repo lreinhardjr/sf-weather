@@ -798,6 +798,26 @@
     return animateScroll(edgeOut, to, LEAD_MS, EASE_OUT);
   }
 
+  /* Rewind a clip to its start and make sure it really happened (iOS sometimes ignores a
+     rewind on a clip that has reached its end; reloading the element resets it for sure). */
+  function rewindClip(clip) {
+    return new Promise((resolve) => {
+      try { clip.pause(); } catch (e) { /* ignore */ }
+      if (!(clip.currentTime > 0.05)) return resolve();
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clip.removeEventListener('seeked', finish);
+        if (clip.currentTime > 0.5) { try { clip.load(); } catch (e) { /* ignore */ } }
+        resolve();
+      };
+      clip.addEventListener('seeked', finish);
+      setTimeout(finish, 700);
+      try { clip.currentTime = 0; } catch (e) { finish(); }
+    });
+  }
+
   /* Phone mode: lead-in scroll, play the clip while the scroll follows it, lead-out scroll. */
   async function ridePlayback(dir, from, to, max, clip) {
     const band = COLD_START - WARM_END;
@@ -806,7 +826,8 @@
     const edgeOut = scrollYFor(fogIn ? COLD_START : WARM_END);
 
     activeTrans = clip;
-    if (!(await animateScroll(from, edgeIn, LEAD_MS, EASE_OUT))) return false;
+    const [leadOk] = await Promise.all([animateScroll(from, edgeIn, LEAD_MS, EASE_OUT), rewindClip(clip)]);
+    if (!leadOk) return false;
 
     /* Play the clip from its start; map its time onto the scroll band. */
     let playFailed = false;
@@ -826,11 +847,14 @@
 
       ridePlaying = true;
       clip.classList.add('is-visible');
-      try { clip.pause(); clip.currentTime = 0; clip.playbackRate = RIDE_FAST; } catch (e) { /* ignore */ }
+      try { clip.playbackRate = RIDE_FAST; } catch (e) { /* ignore */ }
       const startedAt = performance.now();
-      /* A clip that reached its end last time stays flagged "ended" until the rewind lands,
-         so only trust the end signals once this ride has actually been playing a while. */
-      const playedEnough = () => performance.now() - startedAt > 400;
+      const startTime = clip.currentTime || 0;
+      /* Trust the end signals only once this ride has really been playing for a while AND
+         the clip has actually moved on from where it started (a stale "ended" flag or a
+         rewind that never landed must not end the ride before it begins). */
+      const progressed = () => Math.abs(clip.currentTime - startTime) > 0.3;
+      const playedEnough = () => performance.now() - startedAt > 400 && progressed();
       clip.addEventListener('ended', onEndedGuarded);
       const p = clip.play();
       if (p && typeof p.catch === 'function') p.catch(() => { playFailed = true; done(false); });
@@ -838,6 +862,8 @@
       const follow = () => {
         if (finished) return;
         if (!autoScrolling) return done(false);
+        /* If the clip has not moved at all after a while, it is not going to: scrub instead. */
+        if (performance.now() - startedAt > 1800 && !progressed()) { playFailed = true; return done(false); }
         const d = clip.duration;
         if (isFinite(d) && d > 0) {
           const t = clamp(clip.currentTime / d, 0, 1);
