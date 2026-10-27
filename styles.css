@@ -521,10 +521,13 @@ html.intro-active { overflow: hidden; }   /* no scrolling until the fog has lift
   letter-spacing: -0.03em;
 }
 .intro__sub {
-  margin: 22px 0 0;
-  font-size: clamp(14px, 1.5vw, 17px);
-  font-weight: 500;
-  color: rgba(23, 34, 44, 0.72);
+  margin: 20px 0 0;
+  font-family: "Instrument Serif", "Iowan Old Style", "Palatino", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(20px, 2.2vw, 26px);
+  letter-spacing: 0.005em;
+  color: rgba(23, 34, 44, 0.78);
 }
 
 .intro__cue {
