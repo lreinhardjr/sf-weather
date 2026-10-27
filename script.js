@@ -167,8 +167,8 @@
      Intro fog: covers the sunny scene until the first scroll, tap or key.
      ------------------------------------------------------------------------ */
 
-  const INTRO_LIFT_MS = 2400;          // how long the clearing takes before the overlay is removed
-  const INTRO_SETTLE_MS = 1400;        // no ride may start this soon after the fog begins to lift
+  const INTRO_LIFT_MS = 1800;          // how long the clearing takes before the overlay is removed
+  const INTRO_SETTLE_MS = 1050;        // no ride may start this soon after the fog begins to lift
   let introActive = !!intro;
   let introClearedAt = -Infinity;
   const introSettling = () => performance.now() - introClearedAt < INTRO_SETTLE_MS;
@@ -181,7 +181,7 @@
      wisps burn off first, holes open up, and the last thick patches shrink and vanish.
      No image download, no library. */
 
-  const FOG_EVAPORATE_MS = 2100;
+  const FOG_EVAPORATE_MS = 1600;
   const fogCanvas = document.getElementById('introFog');
 
   function makeNoiseField(size, seed) {
