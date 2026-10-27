@@ -537,7 +537,8 @@
     cardVisible = want;
     glass.classList.toggle('is-hidden', !want);
     if (!want) closeInfo(false);
-    if (want && dataLoaded) animateActiveMetric(1200);
+    /* The numbers are already in place when the card fades back in; only the very
+       first appearance (renderPanel) counts up, so the reveal stays smooth. */
   }
 
   function animateActiveMetric(duration) {

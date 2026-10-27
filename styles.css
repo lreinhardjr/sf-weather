@@ -112,13 +112,13 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
     0 14px 40px rgba(10, 20, 30, 0.16),
     0 1px 3px rgba(10, 20, 30, 0.08);
 
-  transition: opacity 0.7s var(--ease), transform 0.9s var(--ease);
+  /* A plain fade, slow enough to feel calm on phones; no movement, no scaling. */
+  transition: opacity 1s linear;
 }
 
 /* Hidden while the fog rolls in (toggled by script.js). */
 .glass.is-hidden {
   opacity: 0;
-  transform: translateY(-10px) scale(0.985);
   pointer-events: none;
 }
 
