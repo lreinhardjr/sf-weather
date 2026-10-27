@@ -67,8 +67,10 @@
   const RIDE_UP_FROM_ABOVE   = 0.75;   // an upward ride may start anywhere below this
   const LEAD_MS = 450;                 // phone mode: quick scroll into / out of the fog band
 
-  /* Colour Safari paints its top/bottom bars with: the sky at the top of whatever is showing. */
-  const THEME_COLORS = { intro: '#e9edf1', warm: '#6b93ff', cold: '#a6b7cb' };
+  /* Colour Safari paints its top/bottom bars with. Safari also draws a dark hairline at the
+     edge of each bar; against a mid-tone that reads as a black line, against a soft white it
+     is barely visible, so the bars stay light in every scene. */
+  const THEME_COLORS = { intro: '#f3f5f7', warm: '#f3f5f7', cold: '#f3f5f7' };
   const themeMeta = document.getElementById('themeColor');
   function updateThemeColor() {
     if (!themeMeta) return;
