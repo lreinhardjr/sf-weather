@@ -82,3 +82,10 @@ ffmpeg -i transition.mp4 -g 1 -c:v libx264 -crf 18 -preset slow -an transition-s
 ```
 
 (The current Veo output is already encoded this way.)
+
+## Known quirk: black border rows
+
+Every Veo render has a 4-pixel pure-black band along the top and bottom edges of the frame
+(rows 0–3 and 1076–1079). The site hides them by zooming the clips 1.5 % (`transform: scale(1.015)`
+on `.clip` and `.poster` in `styles.css`). If you ever want them gone at the source, crop during
+finalize: `-vf crop=1920:1072:0:4`.
