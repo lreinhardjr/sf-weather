@@ -47,7 +47,8 @@ html { scroll-behavior: auto; } /* The scrub is driven by raw scroll; smooth-scr
   position: sticky;
   top: 0;
   width: 100%;
-  height: 100vh;       /* the LARGEST viewport on phones, so no strip shows when Safari's bars shrink */
+  height: 100vh;
+  height: 100svh;      /* the viewport as actually shown; Safari's bars never collapse during the ride */
   overflow: hidden;
   background: var(--cold-sky);   /* placeholder behind the clips: the foggy sky, where the page lands */
 }

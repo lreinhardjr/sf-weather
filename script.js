@@ -813,8 +813,9 @@
       let finished = false;
       const done = (v) => { if (finished) return; finished = true; cleanup(); resolve(v); };
       const onEnded = () => done(true);
+      const onEndedGuarded = () => { if (playedEnough()) onEnded(); };
       const cleanup = () => {
-        clip.removeEventListener('ended', onEnded);
+        clip.removeEventListener('ended', onEndedGuarded);
         clearTimeout(stallTimer);
         ridePlaying = false;
         rideStop = null;
@@ -824,8 +825,12 @@
 
       ridePlaying = true;
       clip.classList.add('is-visible');
-      clip.addEventListener('ended', onEnded);
-      try { clip.currentTime = 0; clip.playbackRate = RIDE_FAST; } catch (e) { /* ignore */ }
+      try { clip.pause(); clip.currentTime = 0; clip.playbackRate = RIDE_FAST; } catch (e) { /* ignore */ }
+      const startedAt = performance.now();
+      /* A clip that reached its end last time stays flagged "ended" until the rewind lands,
+         so only trust the end signals once this ride has actually been playing a while. */
+      const playedEnough = () => performance.now() - startedAt > 400;
+      clip.addEventListener('ended', onEndedGuarded);
       const p = clip.play();
       if (p && typeof p.catch === 'function') p.catch(() => { playFailed = true; done(false); });
 
@@ -840,7 +845,7 @@
           const prog = fogIn ? WARM_END + t * band : COLD_START - t * band;
           window.scrollTo(0, scrollYFor(prog));
           requestTick();
-          if (clip.ended || t >= 0.995) return done(true);
+          if (playedEnough() && (clip.ended || t >= 0.995)) return done(true);
         }
         rideRaf = requestAnimationFrame(follow);
       };
